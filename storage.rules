@@ -1,0 +1,29 @@
+rules_version = '2';
+
+// ============================================================
+// Storage セキュリティルール — 消防車両 製作管理アプリ
+// 方針: 匿名認証済みのみ。写真(画像)のみ・サイズ上限あり。
+// 保存パス: cases/{caseId}/{fileName}
+// ※ 記録は写真のみ。動画は不可（image/* だけ許可）
+// ============================================================
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    match /cases/{caseId}/{fileName=**} {
+      allow read: if request.auth != null;
+
+      // アップロード: 画像のみ・2MB未満（クライアントで約300KBに縮小済み）
+      allow write: if request.auth != null
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+
+      allow delete: if request.auth != null;
+    }
+
+    // 上記以外は拒否
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

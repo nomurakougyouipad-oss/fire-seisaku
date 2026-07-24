@@ -1,0 +1,66 @@
+rules_version = '2';
+
+// ============================================================
+// Firestore セキュリティルール — 消防車両 製作管理アプリ
+// 方針: 匿名認証(サインイン済み)のみ読み書き可 + 主要フィールドを検証
+// ※ テストモード(全許可)から必ずこのルールへ差し替えてください
+// ============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // 案件データの妥当性チェック
+    function validCase(d) {
+      return d.type is string && d.type.size() > 0 && d.type.size() <= 200
+        && d.mgmtNo is string && d.mgmtNo.size() <= 60
+        && d.customer is string && d.customer.size() <= 200
+        && d.chassis is string && d.chassis.size() <= 200
+        && d.staff is string && d.staff.size() <= 60
+        && d.stageIndex is int && d.stageIndex >= 0 && d.stageIndex <= 6
+        && d.progress is number && d.progress >= 0 && d.progress <= 100
+        && d.status in ['順調', '要注意', '遅延']
+        && d.due is string && d.due.size() <= 20
+        && d.orderAmount is number && d.orderAmount >= 0
+        && d.materialCost is number && d.materialCost >= 0
+        && d.laborCost is number && d.laborCost >= 0;
+    }
+
+    // 写真メタデータの妥当性チェック
+    function validPhoto(d) {
+      return d.stageIndex is int && d.stageIndex >= 0 && d.stageIndex <= 6
+        && d.url is string && d.url.size() <= 2000
+        && (!('memo' in d) || (d.memo is string && d.memo.size() <= 2000));
+    }
+
+    match /cases/{caseId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && validCase(request.resource.data);
+      allow delete: if signedIn();
+
+      // 工程写真（段階2）
+      match /photos/{photoId} {
+        allow read: if signedIn();
+        allow create, update: if signedIn() && validPhoto(request.resource.data);
+        allow delete: if signedIn();
+      }
+
+      // 検査・図面など将来のサブコレクション（段階3・4）
+      match /inspections/{id} { allow read, write: if signedIn(); }
+      match /documents/{id}   { allow read, write: if signedIn(); }
+    }
+
+    // 部品・資材（段階3）
+    match /parts/{id} {
+      allow read, write: if signedIn();
+    }
+
+    // 上記以外は全面的に拒否
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

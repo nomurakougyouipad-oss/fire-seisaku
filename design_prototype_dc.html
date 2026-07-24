@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/industry-2f26733b-6b1a-4aea-81ed-11c78733f2f2/styles.css">
+<script src="_ds/industry-2f26733b-6b1a-4aea-81ed-11c78733f2f2/_ds_bundle.js"></script>
+<script src="./image-slot.js"></script>
+<style>
+body{margin:0;background:#e4e4e6;font-family:var(--font-body,system-ui,sans-serif)}
+.dv-turn{padding:44px 48px 36px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 24px}
+.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1d2d3d;color:#fff;border-radius:4px;text-decoration:none}
+.dv-tname{font:600 14px/1.2 var(--font-heading,system-ui);color:#1d1f20;letter-spacing:.01em}
+.dv-opts{display:flex;flex-wrap:wrap;gap:36px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.09);color:#1d1f20;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 12px/1.3 var(--font-body,system-ui);color:rgba(0,0,0,.55)}
+.dv-opt:target .dv-oid{background:#5980a6;color:#fff}
+.dv-card{max-width:100%;background:#f2f2f3;border:1px solid rgba(0,0,0,.12);box-shadow:0 6px 24px rgba(0,0,0,.12);overflow:hidden}
+.dv-next{margin:26px 0 0;font:13px/1.6 var(--font-body,system-ui);color:rgba(0,0,0,.5)}
+.dv-next a{color:#41617f}
+/* app chrome */
+.scr{display:flex;flex-direction:column;background:var(--color-bg)}
+.scr-nav{display:flex;align-items:center;gap:22px;padding:14px 22px;background:var(--fire-grad);color:#fff}
+.scr-nav .text-muted{color:rgba(255,255,255,.8)}
+.scr-brand{font-family:var(--font-heading);font-weight:600;font-size:17px;letter-spacing:.01em;display:flex;align-items:center;gap:9px;color:#fff}
+.scr-brand b{background:#fff;color:var(--color-accent-900);font-size:11px;letter-spacing:.14em;padding:3px 6px}
+.scr-nav nav{display:flex;gap:18px;font-size:13px}
+.scr-nav nav a{color:rgba(255,255,255,.72);text-decoration:none}
+.scr-nav nav a.on{color:#fff;border-bottom:2px solid #fff;padding-bottom:2px}
+.scr-nav .blueprint{border-color:rgba(255,255,255,.55);color:#fff}
+.mono{font-family:ui-monospace,Menlo,monospace}
+/* 消防レッド theme override — steel→fire-red accent ramp */
+:root{
+  --color-accent:#c8392e;--color-accent-2:#c8392e;
+  --color-accent-100:#fdeeec;--color-accent-200:#fbd6d1;--color-accent-300:#f4b1a9;
+  --color-accent-400:#ec8578;--color-accent-500:#dd5749;--color-accent-600:#c8392e;
+  --color-accent-700:#a52a21;--color-accent-800:#7c1e18;--color-accent-900:#4d130f;
+  --color-accent-2-100:#fdeeec;--color-accent-2-200:#fbd6d1;--color-accent-2-300:#f4b1a9;
+  --color-accent-2-400:#ec8578;--color-accent-2-500:#dd5749;--color-accent-2-600:#c8392e;
+  --color-accent-2-700:#a52a21;--color-accent-2-800:#7c1e18;--color-accent-2-900:#4d130f;
+  --fire-grad:linear-gradient(135deg,var(--color-accent-600),var(--color-accent-900));
+  --fire-grad-h:linear-gradient(135deg,var(--color-accent-700),var(--color-accent-900));
+  --fire-grad-a:linear-gradient(135deg,var(--color-accent-800),var(--color-accent-900));
+}
+/* 主ボタン・帯・現在工程タブを共通のグラデ変数に（Tweaksで濃さ切替） */
+.btn-primary{background:var(--fire-grad);border-color:var(--color-accent-800)}
+.btn-primary:hover{background:var(--fire-grad-h)}
+.btn-primary:active{background:var(--fire-grad-a)}
+</style>
+</helmet>
+<section class="dv-turn" id="t6">
+  <div class="dv-thd"><a class="dv-tid" href="#t6">6</a><span class="dv-tname">スマホ版 図面・仕様書（<a class="dv-oid" href="#3b">3b</a> の「図面・仕様書を開く」の遷移先）</span></div>
+  <div class="dv-opts">
+    <div class="dv-opt" id="6a">
+      <div class="dv-olabel"><a class="dv-oid" href="#6a">6a</a>ファイル一覧 — 図面/仕様書/書類を種別ごとに。タップでプレビュー</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="393px,852px">
+        <div style="display:flex;flex-direction:column;height:100%;background:var(--color-bg);font-family:var(--font-body)">
+          <div style="margin-top:44px;background:var(--fire-grad);color:#fff;padding:12px 14px;display:flex;align-items:center;gap:12px">
+            <span style="font-size:22px;line-height:1">‹</span>
+            <div style="flex:1"><div style="font-family:var(--font-heading);font-size:18px;line-height:1.12">図面・仕様書</div><div style="font-size:11px;opacity:.85">{{ focus.id }} ・ {{ focus.type }}</div></div>
+            <span style="font-size:16px">⤒</span>
+          </div>
+          <div style="flex:1;overflow:auto;padding:14px 14px 40px;display:flex;flex-direction:column;gap:18px">
+            <sc-for list="{{ docGroups }}" as="g" hint-placeholder-count="3">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div class="text-muted" style="font-size:11px;letter-spacing:.08em;text-transform:uppercase">{{ g.title }}</div>
+                <sc-for list="{{ g.items }}" as="d" hint-placeholder-count="3">
+                  <button onClick="{{ d.open }}" class="blueprint" style="background:var(--color-surface);padding:11px 12px;display:flex;align-items:center;gap:12px;text-align:left;cursor:pointer;width:100%">
+                    <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                    <span style="width:40px;height:48px;flex:none;background:var(--color-accent-100);color:var(--color-accent-800);display:grid;place-items:center;font-family:var(--font-heading);font-size:11px;letter-spacing:.03em">{{ d.ext }}</span>
+                    <span style="flex:1;min-width:0"><span style="display:block;font-family:var(--font-heading);font-size:15px;line-height:1.2">{{ d.name }}</span><span class="text-muted mono" style="font-size:11px">{{ d.meta }}</span></span>
+                    <span class="text-muted" style="font-size:18px">›</span>
+                  </button>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ docOpen }}">
+            <div style="position:absolute;inset:0;z-index:60;background:#0c0d0e;display:flex;flex-direction:column">
+              <div style="margin-top:44px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;color:#fff;gap:12px">
+                <button onClick="{{ closeDoc }}" style="border:none;background:none;color:#fff;font-size:22px;line-height:1;cursor:pointer">✕</button>
+                <span style="flex:1;min-width:0;font-family:var(--font-heading);font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ docName }}</span>
+                <span class="mono" style="font-size:12px;opacity:.85">{{ docExt }}</span>
+              </div>
+              <div style="flex:1;padding:0 16px;display:flex;align-items:center;justify-content:center">
+                <div class="blueprint" style="width:100%;height:64vh;background:#fff">
+                  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                  <image-slot id="{{ docSlotId }}" shape="rect" fit="contain" placeholder="図面プレビュー（画像/PDFをドロップ）" style="width:100%;height:100%"></image-slot>
+                </div>
+              </div>
+              <div style="padding:12px 16px 30px;display:flex;gap:8px">
+                <button class="btn btn-secondary" style="flex:1;color:#fff;border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.08)">共有</button>
+                <button class="btn btn-primary" style="flex:2">ダウンロード</button>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </x-import>
+    </div>
+  </div>
+  <p class="dv-next">次の一手：「図面にバージョン履歴（Rev）を出す」／「PC版の図面・仕様書タブも」／「最新Revだけ表示するフィルタ」</p>
+</section>
+<section class="dv-turn" id="t5">
+  <div class="dv-thd"><a class="dv-tid" href="#t5">5</a><span class="dv-tname">部品・資材 と 検査（PC版）</span></div>
+  <div class="dv-opts">
+
+    <!-- ═══════════ 5a  部品・資材 ═══════════ -->
+    <div class="dv-opt" id="5a">
+      <div class="dv-olabel"><a class="dv-oid" href="#5a">5a</a>部品・資材 — 在庫と発注状況の管理テーブル</div>
+      <div class="dv-card" style="width:1240px">
+        <div class="scr">
+          <div class="scr-nav">
+            <div class="scr-brand"><b>積載車</b>製作管理</div>
+            <nav><a>案件一覧</a><a>工程ボード</a><a class="on">部品・資材</a><a>検査</a><a>設定</a></nav>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:12px"><span class="text-muted" style="font-size:13px">2026/07/24</span><div class="blueprint" style="width:32px;height:32px;display:grid;place-items:center;font-size:12px;font-family:var(--font-heading)">現</div></div>
+          </div>
+          <div style="padding:22px 26px 28px;display:flex;flex-direction:column;gap:20px">
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px">
+              <div><div class="text-muted" style="font-size:12px;letter-spacing:.1em;text-transform:uppercase">Parts & Materials</div><h2 style="margin:2px 0 0">部品・資材</h2></div>
+              <div style="display:flex;gap:26px">
+                <sc-for list="{{ partKpis }}" as="k" hint-placeholder-count="3">
+                  <div style="text-align:right"><div style="font-family:var(--font-heading);font-size:30px;line-height:1;color:var(--color-accent-800)">{{ k.value }}</div><div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-top:3px">{{ k.label }}</div></div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <input class="input" style="max-width:230px" placeholder="品名・型番で検索">
+              <span class="tag tag-outline">区分: すべて</span>
+              <span class="tag tag-outline">発注状況: すべて</span>
+              <button class="btn btn-primary" style="margin-left:auto">＋ 発注登録</button>
+            </div>
+            <div class="blueprint" style="padding:2px 14px 6px">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <table class="table">
+                <thead><tr>
+                  <th style="width:90px">区分</th><th>品名 / 型番</th><th style="width:120px">使用案件</th><th style="width:96px;text-align:right">必要数</th><th style="width:96px;text-align:right">在庫数</th><th style="width:150px">仕入先</th><th style="width:110px;text-align:right">単価</th><th style="width:120px">入荷予定</th><th style="width:104px">発注状況</th>
+                </tr></thead>
+                <tbody>
+                  <sc-for list="{{ parts }}" as="p" hint-placeholder-count="8">
+                    <tr>
+                      <td><span class="tag {{ p.kindClass }}">{{ p.kind }}</span></td>
+                      <td><div style="font-family:var(--font-heading);font-size:15px;line-height:1.15">{{ p.name }}</div><div class="text-muted mono" style="font-size:11px">{{ p.model }}</div></td>
+                      <td class="mono" style="font-size:12px;color:var(--color-accent-800)">{{ p.case }}</td>
+                      <td class="mono" style="font-size:13px;text-align:right">{{ p.need }}</td>
+                      <td class="mono" style="font-size:13px;text-align:right"><span style="color:{{ p.stockColor }}">{{ p.stock }}</span></td>
+                      <td style="font-size:13px">{{ p.supplier }}</td>
+                      <td class="mono" style="font-size:13px;text-align:right">{{ p.price }}</td>
+                      <td class="mono" style="font-size:12px">{{ p.eta }}</td>
+                      <td><span class="tag {{ p.statusClass }}">{{ p.status }}</span></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ 5b  検査 ═══════════ -->
+    <div class="dv-opt" id="5b">
+      <div class="dv-olabel"><a class="dv-oid" href="#5b">5b</a>検査 — 案件ごとの検査項目と判定</div>
+      <div class="dv-card" style="width:1040px">
+        <div class="scr">
+          <div class="scr-nav">
+            <div class="scr-brand"><b>積載車</b>製作管理</div>
+            <nav><a>案件一覧</a><a>工程ボード</a><a>部品・資材</a><a class="on">検査</a><a>設定</a></nav>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:12px"><span class="text-muted" style="font-size:13px">2026/07/24</span><div class="blueprint" style="width:32px;height:32px;display:grid;place-items:center;font-size:12px;font-family:var(--font-heading)">現</div></div>
+          </div>
+          <div style="padding:22px 26px 30px;display:flex;flex-direction:column;gap:20px">
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px">
+              <div>
+                <div class="text-muted" style="font-size:12px;letter-spacing:.1em;text-transform:uppercase">Inspection</div>
+                <h2 style="margin:2px 0 2px">検査 — {{ focus.id }} {{ focus.type }}</h2>
+                <div class="text-muted" style="font-size:13px">自主検査 ・ 検査員 高橋 ・ 2026/07/24</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-family:var(--font-heading);font-size:30px;line-height:1;color:var(--color-accent-800)">{{ inspectDone }}</div>
+                <div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-top:3px">合格 / 全項目</div>
+              </div>
+            </div>
+            <div class="blueprint" style="padding:2px 14px 6px">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <table class="table">
+                <thead><tr>
+                  <th style="width:44px">#</th><th>検査項目</th><th style="width:130px">判定</th><th style="width:110px">検査日</th><th style="width:88px">検査員</th><th>是正メモ</th>
+                </tr></thead>
+                <tbody>
+                  <sc-for list="{{ inspections }}" as="ins" hint-placeholder-count="7">
+                    <tr>
+                      <td class="mono text-muted" style="font-size:12px">{{ ins.num }}</td>
+                      <td style="font-family:var(--font-heading);font-size:15px">{{ ins.item }}</td>
+                      <td><span class="tag {{ ins.judgeClass }}">{{ ins.judge }}</span></td>
+                      <td class="mono" style="font-size:12px">{{ ins.date }}</td>
+                      <td style="font-size:13px">{{ ins.inspector }}</td>
+                      <td class="text-muted" style="font-size:12px">{{ ins.note }}</td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center">
+              <span class="text-muted" style="font-size:12px">未判定 {{ inspectPending }}件</span>
+              <button class="btn btn-secondary" style="margin-left:auto">検査記録をPDF出力</button>
+              <button class="btn btn-primary">完成検査へ進める →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <p class="dv-next">次の一手：「発注状況で色分けを強く」／「検査に写真列を追加」／「部品を案件詳細(2a)に紐づけ表示」／「不合格があると次へ進めない制御」</p>
+</section>
+<section class="dv-turn" id="t4">
+  <div class="dv-thd"><a class="dv-tid" href="#t4">4</a><span class="dv-tname">濃赤ヘッダー帯（グラデは帯だけ）— <a class="dv-oid" href="#3a">3a</a>/<a class="dv-oid" href="#3b">3b</a> に適用</span></div>
+  <div class="dv-opts">
+    <div class="dv-opt" id="4a">
+      <div class="dv-olabel"><a class="dv-oid" href="#4a">4a</a>案件一覧 — 上部だけ濃赤グラデ帯、本文は明るいまま</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="393px,852px">
+        <div style="display:flex;flex-direction:column;height:100%;background:var(--color-bg);font-family:var(--font-body)">
+          <div style="margin-top:44px;background:var(--fire-grad);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between">
+            <div><div style="font-family:var(--font-heading);font-size:21px;line-height:1.1">Fire apparatus production</div><div style="font-size:11px;opacity:.82;letter-spacing:.04em">製作案件 7件</div></div>
+            <div style="width:34px;height:34px;border:1px solid rgba(255,255,255,.5);display:grid;place-items:center;font-size:16px">≡</div>
+          </div>
+          <div style="padding:12px 16px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;gap:16px">
+              <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+                <div><div style="font-family:var(--font-heading);font-size:22px;line-height:1;color:var(--color-accent-800)">{{ k.value }}</div><div class="text-muted" style="font-size:10px;letter-spacing:.04em">{{ k.label }}</div></div>
+              </sc-for>
+            </div>
+            <input class="input" placeholder="管理No・顧客で検索" style="min-height:38px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="text-muted" style="font-size:11px;letter-spacing:.06em">並べ替え</span>
+              <div class="seg"><label class="seg-opt"><input type="radio" name="sort4a" checked>納期順</label><label class="seg-opt"><input type="radio" name="sort4a">進捗順</label></div>
+            </div>
+          </div>
+          <div style="flex:1;overflow:auto;padding:12px 14px 84px;display:flex;flex-direction:column;gap:12px">
+            <sc-for list="{{ cases }}" as="c" hint-placeholder-count="7">
+              <div class="card blueprint" style="gap:9px;padding:13px;--bar:{{ c.barColor }}">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div style="display:flex;align-items:baseline;justify-content:space-between">
+                  <span class="mono" style="font-size:12px;color:var(--color-accent-800)">{{ c.id }}</span>
+                  <sc-if value="{{ c.ok }}" hint-placeholder-val="{{ true }}"><span class="tag tag-neutral">順調</span></sc-if>
+                  <sc-if value="{{ c.warn }}"><span class="tag tag-outline">要注意</span></sc-if>
+                  <sc-if value="{{ c.late }}"><span class="tag" style="background:var(--color-accent-900);color:var(--color-bg)">遅延</span></sc-if>
+                </div>
+                <div style="font-family:var(--font-heading);font-size:17px;line-height:1.15">{{ c.type }}</div>
+                <div style="display:flex;gap:3px">
+                  <sc-for list="{{ c.steps }}" as="st" hint-placeholder-count="7">
+                    <sc-if value="{{ st.done }}" hint-placeholder-val="{{ true }}"><span style="flex:1;height:5px;background:var(--bar,var(--color-accent))"></span></sc-if>
+                    <sc-if value="{{ st.current }}"><span style="flex:1;height:5px;background:color-mix(in srgb,var(--bar,var(--color-accent)) 30%,#fff);box-shadow:inset 0 0 0 1px var(--bar,var(--color-accent))"></span></sc-if>
+                    <sc-if value="{{ st.todo }}"><span style="flex:1;height:5px;background:var(--color-neutral-300)"></span></sc-if>
+                  </sc-for>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <span class="tag tag-accent">{{ c.stage }}</span>
+                  <span class="mono" style="font-size:14px;color:var(--color-accent-800)">{{ c.progressWidth }}</span>
+                </div>
+                <div style="height:1px;background:var(--color-divider)"></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px">
+                  <span><span class="text-muted" style="font-size:10px;letter-spacing:.06em">納期 </span><span class="mono">{{ c.due }}</span></span>
+                  <sc-if value="{{ c.late }}"><span style="font-size:11px;color:var(--color-bg);background:var(--color-accent-900);padding:2px 7px">{{ c.dueLabel }}</span></sc-if>
+                  <sc-if value="{{ c.notLate }}" hint-placeholder-val="{{ true }}"><span class="text-muted">{{ c.dueLabel }}</span></sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:0;padding:8px 20px 30px;background:color-mix(in srgb,var(--color-bg) 88%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--color-divider);display:flex;justify-content:space-around;font-family:var(--font-heading);font-size:11px">
+            <div style="text-align:center;color:var(--color-accent)">▤<div>一覧</div></div>
+            <div style="text-align:center;color:color-mix(in srgb,var(--color-text) 50%,transparent)">▦<div>工程</div></div>
+            <div style="text-align:center;color:color-mix(in srgb,var(--color-text) 50%,transparent)">◫<div>部品</div></div>
+            <div style="text-align:center;color:color-mix(in srgb,var(--color-text) 50%,transparent)">✓<div>検査</div></div>
+            <div style="text-align:center;color:color-mix(in srgb,var(--color-text) 50%,transparent)">⚙<div>設定</div></div>
+          </div>
+          <button class="btn btn-primary" style="position:absolute;right:18px;bottom:92px;width:52px;height:52px;font-size:24px;box-shadow:var(--shadow-md)">＋</button>
+        </div>
+      </x-import>
+    </div>
+    <div class="dv-opt" id="4b">
+      <div class="dv-olabel"><a class="dv-oid" href="#4b">4b</a>案件詳細 — 同じ濃赤帯（戻る・編集を白抜きで配置）</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="393px,852px">
+        <div style="display:flex;flex-direction:column;height:100%;background:var(--color-bg);font-family:var(--font-body)">
+          <div style="margin-top:44px;background:var(--fire-grad);color:#fff;padding:12px 14px;display:flex;align-items:center;gap:12px">
+            <span style="font-size:22px;line-height:1">‹</span>
+            <div style="flex:1"><div style="font-family:var(--font-heading);font-size:18px;line-height:1.12">{{ focus.id }}　{{ focus.type }}</div><div style="font-size:11px;opacity:.85">{{ focus.stage }} ・ 進捗 {{ focus.progressWidth }}</div></div>
+            <span style="font-size:16px">✎</span>
+          </div>
+          <div style="padding:12px 16px;border-bottom:1px solid var(--color-divider)">
+            <div class="text-muted" style="font-size:12px">シャシ {{ focus.chassis }} ・ 納期 {{ focus.due }}（{{ focus.dueLabel }}）</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:8px"><div style="flex:1;height:6px;background:var(--color-neutral-300);--bar:{{ focus.barColor }}"><div style="height:100%;background:var(--bar,var(--color-accent));width:{{ focus.progressWidth }}"></div></div><span class="mono" style="font-size:13px;color:var(--color-accent-800)">{{ focus.progressWidth }}</span></div>
+            <a href="#6a" class="btn btn-secondary btn-block" style="height:38px;margin-top:9px;font-size:13px;gap:8px">📐 図面・仕様書を開く</a>
+            <div style="display:flex;gap:6px;overflow-x:auto;margin-top:11px;padding-bottom:2px">
+              <sc-for list="{{ detailStages }}" as="s" hint-placeholder-count="7">
+                <sc-if value="{{ s.current }}"><span class="tag" style="flex:none;background:var(--fire-grad);color:var(--color-bg)">{{ s.name }}</span></sc-if>
+                <sc-if value="{{ s.done }}" hint-placeholder-val="{{ true }}"><span class="tag tag-accent" style="flex:none">✓ {{ s.name }}</span></sc-if>
+                <sc-if value="{{ s.todo }}"><span class="tag tag-neutral" style="flex:none">{{ s.name }}</span></sc-if>
+              </sc-for>
+            </div>
+          </div>
+          <div style="flex:1;overflow:auto;padding:14px 14px 96px;display:flex;flex-direction:column;gap:13px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:baseline;gap:8px"><span class="mono text-muted" style="font-size:12px">03</span><span style="font-family:var(--font-heading);font-size:22px">艤装</span><span class="tag tag-accent">作業中</span></div>
+              <span class="text-muted mono" style="font-size:12px">写真 2枚</span>
+            </div>
+            <sc-for list="{{ photos4 }}" as="p" hint-placeholder-count="2">
+              <div class="blueprint" style="background:var(--color-surface);padding:11px;display:flex;flex-direction:column;gap:9px">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="blueprint" style="width:100%;height:196px;background:var(--color-bg)">
+                  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                  <image-slot id="{{ p.id }}" shape="rect" fit="cover" placeholder="写真をドロップ / 撮影" style="width:100%;height:100%"></image-slot>
+                </div>
+                <div style="display:flex;align-items:center;gap:9px;font-size:11px"><span class="tag tag-accent">{{ p.stageTag }}</span><span class="text-muted" style="font-size:10px;letter-spacing:.05em">工程タグ自動</span></div>
+                <textarea class="input" placeholder="メモを入力（例：ホース収納部の取付を確認）" style="min-height:54px;font-size:13px"></textarea>
+              </div>
+            </sc-for>
+            <button class="btn btn-secondary btn-block" style="height:50px">＋ 写真を追加</button>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:0;padding:10px 16px 30px;background:color-mix(in srgb,var(--color-bg) 90%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--color-divider);display:flex;gap:8px;align-items:center">
+            <button class="btn btn-secondary btn-icon" title="編集">✎</button>
+            <button class="btn btn-secondary btn-icon" title="PDF出力">⤓</button>
+            <button class="btn btn-primary" style="flex:1;height:44px">次の工程へ進める →</button>
+          </div>
+        </div>
+      </x-import>
+    </div>
+  </div>
+  <p class="dv-next">次の一手：「もっと濃い/薄い赤に」／「グラデをやめてベタ塗りに」／「PC 版のヘッダーも赤帯に」／「この赤帯を全画面に採用」</p>
+</section>
+<section class="dv-turn" id="t3">
+  <div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname">スマホ版 案件一覧（<a class="dv-oid" href="#1a">1a</a> をモバイル化）</span></div>
+  <div class="dv-opts">
+    <div class="dv-opt" id="3a">
+      <div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a>スマホ版 — 表は縦積みカードに。工程ステッパーと納期を各カードに</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" title="Fire apparatus production" hint-size="393px,852px">
+        <div style="display:flex;flex-direction:column;height:100%;background:var(--color-bg);font-family:var(--font-body)">
+          <div style="padding:10px 16px 12px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;gap:16px">
+              <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+                <div><div style="font-family:var(--font-heading);font-size:22px;line-height:1;color:var(--color-accent-800)">{{ k.value }}</div><div class="text-muted" style="font-size:10px;letter-spacing:.04em">{{ k.label }}</div></div>
+              </sc-for>
+            </div>
+            <input class="input" placeholder="管理No・顧客で検索" style="min-height:38px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="text-muted" style="font-size:11px;letter-spacing:.06em">並べ替え</span>
+              <div class="seg"><label class="seg-opt"><input type="radio" name="sort3a" checked>納期順</label><label class="seg-opt"><input type="radio" name="sort3a">進捗順</label></div>
+            </div>
+          </div>
+          <div style="flex:1;overflow:auto;padding:12px 14px 84px;display:flex;flex-direction:column;gap:12px">
+            <sc-for list="{{ cases }}" as="c" hint-placeholder-count="7">
+              <div class="card blueprint" style="gap:9px;padding:13px;--bar:{{ c.barColor }}">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div style="display:flex;align-items:baseline;justify-content:space-between">
+                  <span class="mono" style="font-size:12px;color:var(--color-accent-800)">{{ c.id }}</span>
+                  <sc-if value="{{ c.ok }}" hint-placeholder-val="{{ true }}"><span class="tag tag-neutral">順調</span></sc-if>
+                  <sc-if value="{{ c.warn }}"><span class="tag tag-outline">要注意</span></sc-if>
+                  <sc-if value="{{ c.late }}"><span class="tag" style="background:var(--color-accent-900);color:var(--color-bg)">遅延</span></sc-if>
+                </div>
+                <div style="font-family:var(--font-heading);font-size:17px;line-height:1.15">{{ c.type }}</div>
+                <div style="display:flex;gap:3px">
+                  <sc-for list="{{ c.steps }}" as="st" hint-placeholder-count="7">
+                    <sc-if value="{{ st.done }}" hint-placeholder-val="{{ true }}"><span style="flex:1;height:5px;background:var(--bar,var(--color-accent))"></span></sc-if>
+                    <sc-if value="{{ st.current }}"><span style="flex:1;height:5px;background:color-mix(in srgb,var(--bar,var(--color-accent)) 30%,#fff);box-shadow:inset 0 0 0 1px var(--bar,var(--color-accent))"></span></sc-if>
+                    <sc-if value="{{ st.todo }}"><span style="flex:1;height:5px;background:var(--color-neutral-300)"></span></sc-if>
+                  </sc-for>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <span class="tag tag-accent">{{ c.stage }}</span>
+                  <span class="mono" style="font-size:14px;color:var(--color-accent-800)">{{ c.progressWidth }}</span>
+                </div>
+                <div style="height:1px;background:var(--color-divider)"></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px">
+                  <span><span class="text-muted" style="font-size:10px;letter-spacing:.06em">納期 </span><span class="mono">{{ c.due }}</span></span>
+                  <sc-if value="{{ c.late }}"><span style="font-size:11px;color:var(--color-bg);background:var(--color-accent-900);padding:2px 7px">{{ c.dueLabel }}</span></sc-if>
+                  <sc-if value="{{ c.notLate }}" hint-placeholder-val="{{ true }}"><span class="text-muted">{{ c.dueLabel }}</span></sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:0;padding:8px 20px 30px;background:color-mix(in srgb,var(--color-bg) 88%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--color-divider);display:flex;justify-content:space-around;font-family:var(--font-heading);font-size:11px">
+            <div style="text-align:center;color:var(--color-accent)">▤<div>一覧</div></div>
+            <div style="text-align:center;color:color-mix(in srgb,var(--color-text) 50%,transparent)">▦<div>工程</div></div>
+            <div style="text-align:center;color:color-mix(in srgb,var(--color-text) 50%,transparent)">◫<div>部品</div></div>
+            <div style="text-align:center;color:color-mix(in srgb,var(--color-text) 50%,transparent)">✓<div>検査</div></div>
+            <div style="text-align:center;color:color-mix(in srgb,var(--color-text) 50%,transparent)">⚙<div>設定</div></div>
+          </div>
+          <button class="btn btn-primary" style="position:absolute;right:18px;bottom:92px;width:52px;height:52px;font-size:24px;box-shadow:var(--shadow-md)">＋</button>
+        </div>
+      </x-import>
+    </div>
+    <div class="dv-opt" id="3b">
+      <div class="dv-olabel"><a class="dv-oid" href="#3b">3b</a>スマホ版 案件詳細 — 1工程ずつ表示、各写真にメモを記入</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" title="FE-2481" hint-size="393px,852px">
+        <div style="display:flex;flex-direction:column;height:100%;background:var(--color-bg);font-family:var(--font-body)">
+          <div style="padding:8px 16px 12px;border-bottom:1px solid var(--color-divider)">
+            <div style="display:flex;align-items:baseline;gap:8px"><span class="mono" style="font-size:12px;color:var(--color-accent-800)">{{ focus.id }}</span><span class="tag tag-accent">{{ focus.stage }}</span></div>
+            <div style="font-family:var(--font-heading);font-size:20px;line-height:1.15;margin-top:2px">{{ focus.type }}</div>
+            <div class="text-muted" style="font-size:12px">シャシ {{ focus.chassis }} ・ 納期 {{ focus.due }}（{{ focus.dueLabel }}）</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:9px"><div style="flex:1;height:6px;background:var(--color-neutral-300);--bar:{{ focus.barColor }}"><div style="height:100%;background:var(--bar,var(--color-accent));width:{{ focus.progressWidth }}"></div></div><span class="mono" style="font-size:13px;color:var(--color-accent-800)">{{ focus.progressWidth }}</span></div>
+            <a href="#6a" class="btn btn-secondary btn-block" style="height:38px;margin-top:9px;font-size:13px;gap:8px">📐 図面・仕様書を開く</a>
+            <div style="display:flex;gap:6px;overflow-x:auto;margin-top:11px;padding-bottom:2px">
+              <sc-for list="{{ detailStages }}" as="s" hint-placeholder-count="7">
+                <sc-if value="{{ s.current }}"><span class="tag" style="flex:none;background:var(--fire-grad);color:var(--color-bg)">{{ s.name }}</span></sc-if>
+                <sc-if value="{{ s.done }}" hint-placeholder-val="{{ true }}"><span class="tag tag-accent" style="flex:none">✓ {{ s.name }}</span></sc-if>
+                <sc-if value="{{ s.todo }}"><span class="tag tag-neutral" style="flex:none">{{ s.name }}</span></sc-if>
+              </sc-for>
+            </div>
+          </div>
+          <div style="flex:1;overflow:auto;padding:14px 14px 96px;display:flex;flex-direction:column;gap:13px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:baseline;gap:8px"><span class="mono text-muted" style="font-size:12px">03</span><span style="font-family:var(--font-heading);font-size:22px">艤装</span><span class="tag tag-accent">作業中</span></div>
+              <span class="text-muted mono" style="font-size:12px">写真 {{ photoCount }}枚</span>
+            </div>
+            <sc-for list="{{ photos }}" as="p" hint-placeholder-count="3">
+              <div class="blueprint" style="background:var(--color-surface);padding:11px;display:flex;flex-direction:column;gap:9px">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="blueprint" style="width:100%;height:196px;background:var(--color-bg);position:relative">
+                  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                  <image-slot id="{{ p.id }}" shape="rect" fit="cover" placeholder="写真をドロップ / 撮影" style="width:100%;height:100%"></image-slot>
+                  <button onClick="{{ p.open }}" title="拡大して他の写真も見る" style="position:absolute;right:8px;bottom:8px;width:34px;height:34px;border:none;background:rgba(29,31,32,.72);color:#fff;font-size:15px;cursor:pointer;display:grid;place-items:center">⤢</button>
+                  <span style="position:absolute;left:8px;top:8px;background:rgba(29,31,32,.72);color:#fff;font-size:10px;letter-spacing:.05em;padding:2px 7px">{{ p.badge }}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:9px;font-size:11px"><span class="tag tag-accent">{{ p.stageTag }}</span><span class="text-muted" style="font-size:10px;letter-spacing:.05em">工程タグ自動</span></div>
+                <textarea class="input" placeholder="メモを入力（例：ホース収納部の取付を確認）" style="min-height:54px;font-size:13px"></textarea>
+              </div>
+            </sc-for>
+            <button class="btn btn-secondary btn-block" style="height:50px" onClick="{{ addPhoto }}">＋ 写真を追加</button>
+          </div>
+          <sc-if value="{{ lightboxOpen }}">
+            <div style="position:absolute;inset:0;z-index:60;background:#0c0d0e;display:flex;flex-direction:column">
+              <div style="margin-top:44px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;color:#fff">
+                <button onClick="{{ closeLightbox }}" style="border:none;background:none;color:#fff;font-size:22px;line-height:1;cursor:pointer">✕</button>
+                <span style="font-family:var(--font-heading);font-size:15px">艤装 ・ 写真</span>
+                <span class="mono" style="font-size:13px;opacity:.85">{{ lightboxCounter }}</span>
+              </div>
+              <div ref="{{ trackRef }}" onScroll="{{ onTrackScroll }}" style="flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none">
+                <sc-for list="{{ photos }}" as="p" hint-placeholder-count="3">
+                  <div style="flex:none;width:100%;scroll-snap-align:center;display:flex;align-items:center;justify-content:center;padding:0 16px">
+                    <div style="width:100%;max-height:64vh;display:flex;align-items:center;justify-content:center">
+                      <image-slot id="{{ p.id }}" shape="rect" fit="contain" placeholder="写真がありません" style="width:100%;height:64vh"></image-slot>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+              <button onClick="{{ prevPhoto }}" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:40px;height:40px;border:none;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font-size:20px;cursor:pointer">‹</button>
+              <button onClick="{{ nextPhoto }}" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);width:40px;height:40px;border:none;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font-size:20px;cursor:pointer">›</button>
+              <div style="display:flex;justify-content:center;gap:6px;padding:12px 0 6px">
+                <sc-for list="{{ lightboxDots }}" as="d" hint-placeholder-count="3">
+                  <sc-if value="{{ d.active }}" hint-placeholder-val="{{ true }}"><span style="width:8px;height:8px;border-radius:50%;background:#fff"></span></sc-if>
+                  <sc-if value="{{ d.idle }}"><span style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.35)"></span></sc-if>
+                </sc-for>
+              </div>
+              <div style="padding:6px 16px 30px;color:#fff">
+                <div style="display:flex;align-items:center;gap:9px;font-size:11px;margin-bottom:7px"><span class="tag tag-accent">艤装</span><span style="opacity:.7;font-size:10px;letter-spacing:.05em">工程タグ自動</span></div>
+                <textarea class="input" placeholder="メモを入力（例：ホース収納部の取付を確認）" style="min-height:52px;font-size:13px;background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.25)"></textarea>
+              </div>
+            </div>
+          </sc-if>
+          <div style="position:absolute;left:0;right:0;bottom:0;padding:10px 16px 30px;background:color-mix(in srgb,var(--color-bg) 90%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--color-divider);display:flex;gap:8px;align-items:center">
+            <button class="btn btn-secondary btn-icon" title="編集">✎</button>
+            <button class="btn btn-secondary btn-icon" title="PDF出力">⤓</button>
+            <button class="btn btn-primary" style="flex:1;height:44px">次の工程へ進める →</button>
+          </div>
+        </div>
+      </x-import>
+    </div>
+  </div>
+  <p class="dv-next">次の一手：「スマホ版の案件詳細（工程写真）も見たい」／「タブレット版も」／「上部を <a class="dv-oid" href="#1a">1a</a> と同じ KPI 並びに」／「この配色/密度を調整」</p>
+</section>
+<section class="dv-turn" id="t2">
+  <div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">案件詳細 — 工程ごとに写真を複数枚記録</span></div>
+  <div class="dv-opts">
+    <div class="dv-opt" id="2a">
+      <div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>工程別フォトログ — 各工程に写真ストリップ（ドラッグ&ドロップで追加）</div>
+      <div class="dv-card" style="width:1040px">
+        <div class="scr">
+          <div class="scr-nav">
+            <div class="scr-brand"><b>積載車</b>製作管理</div>
+            <nav><a class="on">案件一覧</a><a>工程ボード</a><a>部品・資材</a><a>検査</a><a>設定</a></nav>
+            <button class="btn btn-secondary" style="margin-left:auto">← 一覧へ戻る</button>
+          </div>
+          <div style="padding:22px 26px 30px;display:flex;flex-direction:column;gap:20px">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px">
+              <div>
+                <div style="display:flex;align-items:baseline;gap:10px"><span class="mono" style="font-size:14px;color:var(--color-accent-800)">{{ focus.id }}</span><span class="tag tag-accent">{{ focus.stage }}</span></div>
+                <h2 style="margin:4px 0 2px">{{ focus.type }}</h2>
+                <div class="text-muted" style="font-size:13px">{{ focus.customer }} ・ シャシ {{ focus.chassis }} ・ 担当 {{ focus.staff }}</div>
+              </div>
+              <div style="text-align:right;min-width:210px">
+                <div class="text-muted" style="font-size:11px;letter-spacing:.08em;text-transform:uppercase">全体進捗 / 納期</div>
+                <div style="display:flex;align-items:baseline;gap:8px;justify-content:flex-end"><span style="font-family:var(--font-heading);font-size:28px;line-height:1;color:var(--color-accent-800)">{{ focus.progressWidth }}</span><span class="mono" style="font-size:13px">{{ focus.due }}（{{ focus.dueLabel }}）</span></div>
+                <div style="height:6px;background:var(--color-neutral-300);margin-top:6px"><div style="height:100%;background:var(--bar,var(--color-accent));width:{{ focus.progressWidth }}"></div></div>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <sc-for list="{{ detailStages }}" as="s" hint-placeholder-count="7">
+                <div class="blueprint" style="padding:14px 16px;display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:start;background:var(--color-surface)">
+                  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                  <div style="display:flex;flex-direction:column;gap:6px">
+                    <div style="display:flex;align-items:baseline;gap:7px"><span class="mono text-muted" style="font-size:12px">{{ s.num }}</span><span style="font-family:var(--font-heading);font-size:19px">{{ s.name }}</span></div>
+                    <sc-if value="{{ s.done }}" hint-placeholder-val="{{ true }}"><span class="tag tag-neutral" style="align-self:flex-start">完了</span></sc-if>
+                    <sc-if value="{{ s.current }}"><span class="tag tag-accent" style="align-self:flex-start">作業中</span></sc-if>
+                    <sc-if value="{{ s.todo }}"><span class="tag tag-outline" style="align-self:flex-start">未着手</span></sc-if>
+                    <span class="text-muted mono" style="font-size:12px">写真 {{ s.count }}枚</span>
+                    <sc-if value="{{ s.synced }}"><span class="tag tag-outline" style="align-self:flex-start;font-size:10px">📱 スマホ撮影と同期</span></sc-if>
+                  </div>
+                  <div style="display:flex;gap:10px;flex-wrap:wrap">
+                    <sc-for list="{{ s.slots }}" as="p" hint-placeholder-count="3">
+                      <div class="blueprint" style="width:150px;height:108px;background:var(--color-bg)">
+                        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                        <image-slot id="{{ p.id }}" shape="rect" fit="cover" placeholder="写真をドロップ" style="width:100%;height:100%"></image-slot>
+                      </div>
+                    </sc-for>
+                    <button class="btn btn-secondary" style="width:150px;height:108px;flex-direction:column;gap:6px;font-size:13px">＋<span>写真を追加</span></button>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="dv-next">次の一手：「写真スロットをもっと大きく」／「工程を横並びのタブに」／「各写真に日付・撮影者・コメントを付けたい」／「1a の一覧行から この詳細へ飛べるように」</p>
+</section>
+<section class="dv-turn" id="t1">
+  <div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">案件一覧（<a class="dv-oid" href="#1a">1a</a> メイン確定）と工程ボード</span></div>
+  <div class="dv-opts">
+
+    <!-- ═══════════ 1a  データテーブル ═══════════ -->
+    <div class="dv-opt" id="1a">
+      <div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>定番のデータテーブル — 情報密度を最優先、工程を一列に</div>
+      <div class="dv-card" style="width:1180px">
+        <div class="scr">
+          <div class="scr-nav">
+            <div class="scr-brand"><b>積載車</b>製作管理</div>
+            <nav><a class="on">案件一覧</a><a>工程ボード</a><a>部品・資材</a><a>検査</a><a>設定</a></nav>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+              <span class="text-muted" style="font-size:13px">2026/07/23</span>
+              <div class="blueprint" style="width:32px;height:32px;display:grid;place-items:center;font-size:12px;font-family:var(--font-heading)">現</div>
+            </div>
+          </div>
+          <div style="padding:22px 26px 28px;display:flex;flex-direction:column;gap:20px">
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px">
+              <div>
+                <div class="text-muted" style="font-size:12px;letter-spacing:.1em;text-transform:uppercase">Production Orders</div>
+                <h2 style="margin:2px 0 0">Fire apparatus production</h2>
+              </div>
+              <div style="display:flex;gap:26px">
+                <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+                  <div style="text-align:right">
+                    <div style="font-family:var(--font-heading);font-size:30px;line-height:1;color:var(--color-accent-800)">{{ k.value }}</div>
+                    <div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-top:3px">{{ k.label }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="seg"><label class="seg-opt"><input type="radio" name="v1a" checked>一覧</label><label class="seg-opt"><input type="radio" name="v1a">カード</label><label class="seg-opt"><input type="radio" name="v1a">工程</label></div>
+              <input class="input" style="max-width:230px" placeholder="管理No・顧客で検索">
+              <span class="tag tag-outline">工程: すべて</span>
+              <button class="btn btn-primary" style="margin-left:auto">＋ 新規案件</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;font-size:11px">
+              <span class="text-muted">進捗ラインの色：</span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="width:16px;height:5px;background:#4a9d6b"></span>順調</span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="width:16px;height:5px;background:#e0912f"></span>要注意</span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="width:16px;height:5px;background:#a52a21"></span>遅延</span>
+            </div>
+            <div class="blueprint" style="padding:2px 14px 6px">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <table class="table">
+                <thead><tr>
+                  <th style="width:88px">管理No</th><th>顧客 / 車両タイプ</th><th style="width:210px">現在の工程</th><th style="width:104px">進捗</th><th style="width:118px;text-align:right">受注金額</th><th style="width:104px;text-align:right">材料原価</th><th style="width:104px;text-align:right">工数原価</th><th style="width:110px">納期</th><th style="width:64px">担当</th><th style="width:76px">状態</th>
+                </tr></thead>
+                <tbody>
+                  <sc-for list="{{ cases }}" as="c" hint-placeholder-count="7">
+                    <tr style="--bar:{{ c.barColor }}">
+                      <td class="mono" style="font-size:13px;color:var(--color-accent-800)">{{ c.id }}</td>
+                      <td><div style="font-family:var(--font-heading);font-size:16px;line-height:1.15">{{ c.type }}</div><div class="text-muted" style="font-size:12px">{{ c.customer }} ・ {{ c.chassis }}</div></td>
+                      <td>
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span class="tag tag-accent">{{ c.stage }}</span><span class="text-muted mono" style="font-size:11px">{{ c.stepLabel }}</span></div>
+                        <div style="display:flex;gap:3px">
+                          <sc-for list="{{ c.steps }}" as="st" hint-placeholder-count="7">
+                            <sc-if value="{{ st.done }}" hint-placeholder-val="{{ true }}"><span style="flex:1;height:5px;background:var(--bar,var(--color-accent))"></span></sc-if>
+                            <sc-if value="{{ st.current }}"><span style="flex:1;height:5px;background:color-mix(in srgb,var(--bar,var(--color-accent)) 30%,#fff);box-shadow:inset 0 0 0 1px var(--bar,var(--color-accent))"></span></sc-if>
+                            <sc-if value="{{ st.todo }}"><span style="flex:1;height:5px;background:var(--color-neutral-300)"></span></sc-if>
+                          </sc-for>
+                        </div>
+                      </td>
+                      <td>
+                        <div style="display:flex;align-items:center;gap:8px"><span class="mono" style="font-size:13px;width:34px">{{ c.progressWidth }}</span>
+                          <div style="flex:1;height:6px;background:var(--color-neutral-300)"><div style="height:100%;background:var(--bar,var(--color-accent));width:{{ c.progressWidth }}"></div></div>
+                        </div>
+                      </td>
+                      <td class="mono" style="font-size:13px;text-align:right;color:var(--color-accent-800)">{{ c.orderAmount }}</td>
+                      <td class="mono" style="font-size:13px;text-align:right">{{ c.matCost }}</td>
+                      <td class="mono" style="font-size:13px;text-align:right">{{ c.labCost }}</td>
+                      <td><div class="mono" style="font-size:13px">{{ c.due }}</div>
+                        <sc-if value="{{ c.late }}"><div style="font-size:11px;color:var(--color-bg);background:var(--color-accent-900);display:inline-block;padding:1px 6px;margin-top:2px">{{ c.dueLabel }}</div></sc-if>
+                        <sc-if value="{{ c.notLate }}" hint-placeholder-val="{{ true }}"><div class="text-muted" style="font-size:11px">{{ c.dueLabel }}</div></sc-if>
+                      </td>
+                      <td style="font-size:13px">{{ c.staff }}</td>
+                      <td>
+                        <sc-if value="{{ c.ok }}" hint-placeholder-val="{{ true }}"><span class="tag tag-neutral">順調</span></sc-if>
+                        <sc-if value="{{ c.warn }}"><span class="tag tag-outline">要注意</span></sc-if>
+                        <sc-if value="{{ c.late }}"><span class="tag" style="background:var(--color-accent-900);color:var(--color-bg)">遅延</span></sc-if>
+                      </td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ 1c  工程カンバン ═══════════ -->
+    <div class="dv-opt" id="1c">
+      <div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>工程カンバン — 7工程を列に、案件が工程を流れる</div>
+      <div class="dv-card" style="width:1320px">
+        <div class="scr">
+          <div class="scr-nav">
+            <div class="scr-brand"><b>積載車</b>製作管理</div>
+            <nav><a>案件一覧</a><a class="on">工程ボード</a><a>部品・資材</a><a>検査</a><a>設定</a></nav>
+            <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+              <span class="tag tag-outline">遅延 1</span>
+              <button class="btn btn-primary">＋ 新規案件</button>
+            </div>
+          </div>
+          <div style="padding:22px 24px 28px;display:flex;flex-direction:column;gap:16px">
+            <h2 style="margin:0">工程ボード</h2>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:10px;align-items:start">
+              <sc-for list="{{ columns }}" as="col" hint-placeholder-count="7">
+                <div style="display:flex;flex-direction:column;gap:10px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--color-accent);padding-bottom:6px">
+                    <div style="display:flex;align-items:baseline;gap:6px"><span class="mono text-muted" style="font-size:11px">{{ col.num }}</span><span style="font-family:var(--font-heading);font-size:16px">{{ col.name }}</span></div>
+                    <span class="mono" style="font-size:12px;color:var(--color-accent-800)">{{ col.count }}</span>
+                  </div>
+                  <sc-for list="{{ col.cases }}" as="c" hint-placeholder-count="1">
+                    <a href="#2a" class="blueprint" style="padding:10px 11px;display:flex;flex-direction:column;gap:7px;background:var(--color-surface);--bar:{{ c.barColor }};text-decoration:none;color:inherit;cursor:pointer" style-hover="background:var(--color-accent-100)">
+                      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                      <div style="display:flex;align-items:baseline;justify-content:space-between"><span class="mono" style="font-size:11px;color:var(--color-accent-800)">{{ c.id }}</span>
+                        <sc-if value="{{ c.late }}"><span style="width:8px;height:8px;background:var(--color-accent-900)"></span></sc-if>
+                        <sc-if value="{{ c.warn }}"><span style="width:8px;height:8px;box-shadow:inset 0 0 0 1.5px var(--color-accent)"></span></sc-if>
+                      </div>
+                      <div style="font-family:var(--font-heading);font-size:13.5px;line-height:1.2">{{ c.type }}</div>
+                      <div class="text-muted" style="font-size:11px">{{ c.customer }}</div>
+                      <div style="display:flex;gap:2px">
+                        <sc-for list="{{ c.steps }}" as="st" hint-placeholder-count="7">
+                          <sc-if value="{{ st.done }}" hint-placeholder-val="{{ true }}"><span style="flex:1;height:4px;background:var(--bar,var(--color-accent))"></span></sc-if>
+                          <sc-if value="{{ st.current }}"><span style="flex:1;height:4px;background:color-mix(in srgb,var(--bar,var(--color-accent)) 30%,#fff);box-shadow:inset 0 0 0 1px var(--bar,var(--color-accent))"></span></sc-if>
+                          <sc-if value="{{ st.todo }}"><span style="flex:1;height:4px;background:var(--color-neutral-300)"></span></sc-if>
+                        </sc-for>
+                      </div>
+                      <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px"><span class="mono">{{ c.due }}</span><span class="mono" style="color:var(--color-accent-800)">{{ c.progressWidth }}</span></div>
+                    </a>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <p class="dv-next">メイン画面は <a class="dv-oid" href="#1a">1a</a>（PC版データテーブル）で確定。<a class="dv-oid" href="#1c">1c</a> は工程ボードとして別メニューに使用。</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;headerTone&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;濃いめ&quot;,&quot;options&quot;:[&quot;濃いめ&quot;,&quot;明るめ&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;配色&quot;}}">
+class Component extends DCLogic {
+  state = {
+    lightbox: null,
+    doc: null,
+    photos: [
+      { id: 'sp-2481-0', stageTag: '艤装' },
+      { id: 'sp-2481-1', stageTag: '艤装' },
+      { id: 'sp-2481-2', stageTag: '艤装' },
+    ],
+  };
+  reqPhotos = [
+    { label: '車両全体（側面）', done: true, todo: false },
+    { label: 'ポンプ取付部', done: true, todo: false },
+    { label: 'ホース収納部', done: false, todo: true },
+    { label: '銘板・車台番号', done: false, todo: true },
+  ];
+  addPhoto = () => {
+    this.setState(s => ({
+      photos: [...s.photos, { id: 'sp-2481-' + Date.now(), stageTag: '艤装' }],
+    }));
+  };
+  trackRef = React.createRef();
+  openLightbox = (i) => this.setState({ lightbox: i });
+  closeLightbox = () => this.setState({ lightbox: null });
+  openDoc = (i) => this.setState({ doc: i });
+  closeDoc = () => this.setState({ doc: null });
+  onTrackScroll = () => {
+    const el = this.trackRef.current;
+    if (!el) return;
+    const i = Math.round(el.scrollLeft / el.clientWidth);
+    if (i !== this.state.lightbox) this.setState({ lightbox: i });
+  };
+  scrollLightbox = (d) => {
+    const el = this.trackRef.current;
+    if (el) el.scrollBy({ left: d * el.clientWidth, behavior: 'smooth' });
+  };
+  componentDidMount() { this.applyTone(); }
+  componentDidUpdate(prevProps, prevState) {
+    this.applyTone();
+    if (this.state.lightbox !== null && (!prevState || prevState.lightbox === null)) {
+      const el = this.trackRef.current;
+      const idx = this.state.lightbox;
+      if (el) requestAnimationFrame(() => { el.scrollLeft = el.clientWidth * idx; });
+    }
+  }
+  applyTone() {
+    const bright = (this.props.headerTone ?? '濃いめ') === '明るめ';
+    const r = document.documentElement.style;
+    if (bright) {
+      r.setProperty('--fire-grad', 'linear-gradient(135deg,var(--color-accent-500),var(--color-accent-800))');
+      r.setProperty('--fire-grad-h', 'linear-gradient(135deg,var(--color-accent-600),var(--color-accent-900))');
+      r.setProperty('--fire-grad-a', 'linear-gradient(135deg,var(--color-accent-700),var(--color-accent-900))');
+    } else {
+      r.setProperty('--fire-grad', 'linear-gradient(135deg,var(--color-accent-600),var(--color-accent-900))');
+      r.setProperty('--fire-grad-h', 'linear-gradient(135deg,var(--color-accent-700),var(--color-accent-900))');
+      r.setProperty('--fire-grad-a', 'linear-gradient(135deg,var(--color-accent-800),var(--color-accent-900))');
+    }
+  }
+  renderVals() {
+    const stages = ['設計', '加工', '艤装', '塗装', '電装', '検査', '納品'];
+    const raw = [
+      { id: 'FE-2481', customer: '相模原市消防団', type: 'CD-I型 ポンプ自動車', chassis: 'いすゞ ELF', si: 2, progress: 44, due: '09/30', dueDays: 69, staff: '田中', status: '順調' },
+      { id: 'FE-2479', customer: '厚木市消防本部', type: '水槽付ポンプ自動車', chassis: '日野 レンジャー', si: 3, progress: 61, due: '08/22', dueDays: 30, staff: '佐藤', status: '順調' },
+      { id: 'FE-2475', customer: '海老名市消防団', type: '小型動力ポンプ付積載車', chassis: 'トヨタ ダイナ', si: 4, progress: 78, due: '08/05', dueDays: 13, staff: '鈴木', status: '要注意' },
+      { id: 'FE-2470', customer: '座間市消防本部', type: '資機材搬送車', chassis: 'いすゞ フォワード', si: 5, progress: 92, due: '07/31', dueDays: 8, staff: '高橋', status: '順調' },
+      { id: 'FE-2468', customer: '大和市消防団', type: 'CD-II型 ポンプ自動車', chassis: '三菱ふそう キャンター', si: 1, progress: 22, due: '10/20', dueDays: 89, staff: '田中', status: '順調' },
+      { id: 'FE-2465', customer: '綾瀬市消防本部', type: '救助工作車', chassis: '日野 レンジャー', si: 0, progress: 8, due: '11/15', dueDays: 115, staff: '伊藤', status: '順調' },
+      { id: 'FE-2460', customer: '秦野市消防団', type: '水槽付ポンプ自動車', chassis: 'いすゞ フォワード', si: 4, progress: 70, due: '07/25', dueDays: 2, staff: '佐藤', status: '遅延' },
+    ];
+    const costs = {
+      'FE-2481': [1850000, 620000], 'FE-2479': [2400000, 980000], 'FE-2475': [1120000, 540000],
+      'FE-2470': [1680000, 1240000], 'FE-2468': [2050000, 410000], 'FE-2465': [3200000, 260000], 'FE-2460': [2380000, 1050000],
+    };
+    const orders = {
+      'FE-2481': 3200000, 'FE-2479': 4380000, 'FE-2475': 2080000,
+      'FE-2470': 3450000, 'FE-2468': 2960000, 'FE-2465': 4650000, 'FE-2460': 3980000,
+    };
+    const yen = n => '¥' + n.toLocaleString('ja-JP');
+    const cases = raw.map(c => ({
+      ...c,
+      orderAmount: yen(orders[c.id] || 0),
+      matCost: yen((costs[c.id] || [0, 0])[0]),
+      labCost: yen((costs[c.id] || [0, 0])[1]),
+      stage: stages[c.si],
+      stepLabel: (c.si + 1) + ' / ' + stages.length,
+      steps: stages.map((name, i) => ({ name, done: i < c.si, current: i === c.si, todo: i > c.si })),
+      progressWidth: c.progress + '%',
+      barColor: c.status === '遅延' ? '#a52a21' : c.status === '要注意' ? '#e0912f' : '#4a9d6b',
+      dueLabel: '残' + c.dueDays + '日',
+      ok: c.status === '順調',
+      warn: c.status === '要注意',
+      late: c.status === '遅延',
+      notLate: c.status !== '遅延',
+    }));
+    const columns = stages.map((name, i) => ({
+      name,
+      num: String(i + 1).padStart(2, '0'),
+      count: cases.filter(c => c.si === i).length,
+      cases: cases.filter(c => c.si === i),
+    }));
+    const kpis = [
+      { value: '7', label: '進行中' },
+      { value: '3', label: '今月納品' },
+      { value: '1', label: '要注意' },
+      { value: '1', label: '遅延' },
+    ];
+    const focus = cases.find(c => c.id === 'FE-2481');
+    const detailStages = stages.map((name, i) => {
+      const shared = i === focus.si;
+      const slots = shared
+        ? this.state.photos.map(p => ({ id: p.id }))
+        : Array.from({ length: i < focus.si ? 3 : 0 }, (_, k) => ({ id: 'ph-2481-' + i + '-' + k }));
+      return {
+        name,
+        num: String(i + 1).padStart(2, '0'),
+        done: i < focus.si,
+        current: i === focus.si,
+        todo: i > focus.si,
+        count: slots.length,
+        synced: shared,
+        slots,
+      };
+    });
+    const rawParts = [
+      { kind: '部品', name: '消防ポンプ A-2級', model: 'TFP-A2/2026', case: 'FE-2479', need: 1, stock: 0, supplier: 'トーハツ', price: 680000, eta: '08/01', status: '入荷待ち' },
+      { kind: '部品', name: '真空ポンプユニット', model: 'VP-140', case: 'FE-2481', need: 1, stock: 2, supplier: '共立', price: 92000, eta: '在庫', status: '入荷済' },
+      { kind: '資材', name: 'アルミ縞板 t3.0', model: 'A5052 1×2m', case: 'FE-2481', need: 6, stock: 3, supplier: '中央鋼材', price: 18500, eta: '07/29', status: '発注済' },
+      { kind: '部品', name: '散水ノズル 65A', model: 'ST-65', case: 'FE-2475', need: 4, stock: 4, supplier: '横井製作所', price: 24000, eta: '在庫', status: '入荷済' },
+      { kind: '資材', name: '消防用ホース 65mm×20m', model: 'FH-6520', case: 'FE-2470', need: 8, stock: 2, supplier: '芦森工業', price: 15800, eta: '08/05', status: '未発注' },
+      { kind: '部品', name: 'LED警光灯 バー型', model: 'PLB-1200', case: 'FE-2465', need: 1, stock: 1, supplier: '大阪サイレン', price: 148000, eta: '在庫', status: '入荷済' },
+      { kind: '部品', name: 'サイレンアンプ', model: 'SA-60', case: 'FE-2468', need: 1, stock: 0, supplier: '大阪サイレン', price: 56000, eta: '08/12', status: '発注済' },
+      { kind: '資材', name: 'ステンレスボルトセット', model: 'SUS304 M8', case: '共通', need: 200, stock: 640, supplier: '中央鋼材', price: 42, eta: '在庫', status: '入荷済' },
+    ];
+    const kindCls = { '部品': 'tag-accent', '資材': 'tag-neutral' };
+    const statusCls = { '未発注': 'tag-outline', '発注済': 'tag-accent', '入荷待ち': 'tag-outline', '入荷済': 'tag-neutral' };
+    const parts = rawParts.map(p => ({
+      ...p,
+      kindClass: kindCls[p.kind],
+      statusClass: statusCls[p.status],
+      price: yen(p.price),
+      stockColor: p.stock < p.need ? '#a52a21' : 'inherit',
+    }));
+    const partKpis = [
+      { value: '8', label: '登録品目' },
+      { value: '3', label: '発注中' },
+      { value: '2', label: '在庫不足' },
+    ];
+    const rawInspect = [
+      { item: 'ポンプ性能・放水試験', judge: '合格', date: '07/22', inspector: '高橋', note: '' },
+      { item: '真空性能試験', judge: '合格', date: '07/22', inspector: '高橋', note: '' },
+      { item: '電装・配線', judge: '要調整', date: '07/23', inspector: '伊藤', note: '警光灯の配線を再固定' },
+      { item: '灯火・保安基準', judge: '合格', date: '07/23', inspector: '伊藤', note: '' },
+      { item: '寸法・全幅全高', judge: '合格', date: '07/23', inspector: '高橋', note: '' },
+      { item: '車両総重量', judge: '未判定', date: '—', inspector: '—', note: '積載完了後に測定' },
+      { item: '外観・塗装', judge: '未判定', date: '—', inspector: '—', note: '' },
+    ];
+    const judgeCls = { '合格': 'tag-neutral', '要調整': 'tag-outline', '不合格': 'tag-accent', '未判定': 'tag-outline' };
+    const inspections = rawInspect.map((r, i) => ({ ...r, num: i + 1, judgeClass: judgeCls[r.judge] }));
+    const inspectDone = rawInspect.filter(r => r.judge === '合格').length + ' / ' + rawInspect.length;
+    const inspectPending = rawInspect.filter(r => r.judge === '未判定').length;
+    const reqDone = this.reqPhotos.filter(r => r.done).length + '/' + this.reqPhotos.length;
+    const photos4 = [{ id: 'ph4-2481-0', stageTag: '艤装' }, { id: 'ph4-2481-1', stageTag: '艤装' }];
+    const docsRaw = [
+      { group: '図面', name: '外形図 A-2級ポンプ車', ext: 'PDF', meta: 'Rev.C ・ 2.4MB ・ 07/15' },
+      { group: '図面', name: '艤装図', ext: 'DXF', meta: 'Rev.B ・ 1.1MB ・ 07/18' },
+      { group: '図面', name: '電装配線図', ext: 'PDF', meta: 'Rev.A ・ 3.2MB ・ 07/20' },
+      { group: '仕様書', name: '車両仕様書', ext: 'PDF', meta: '1.8MB ・ 07/10' },
+      { group: '仕様書', name: '装備品リスト', ext: 'XLSX', meta: '0.3MB ・ 07/12' },
+      { group: '見積・書類', name: '見積書', ext: 'PDF', meta: '0.5MB ・ 07/05' },
+      { group: '見積・書類', name: '注文書', ext: 'PDF', meta: '0.4MB ・ 07/08' },
+    ];
+    const docTitles = ['図面', '仕様書', '見積・書類'];
+    const docGroups = docTitles.map(title => ({
+      title,
+      items: docsRaw.map((d, i) => ({ ...d, idx: i })).filter(d => d.group === title)
+        .map(d => ({ ...d, open: () => this.openDoc(d.idx) })),
+    }));
+    const dsel = this.state.doc;
+    const docSel = dsel !== null ? docsRaw[dsel] : null;
+    const total = this.state.photos.length;
+    const lb = this.state.lightbox;
+    const photos = this.state.photos.map((p, i) => ({ ...p, badge: (i + 1) + '/' + total, open: () => this.openLightbox(i) }));
+    const lightboxDots = this.state.photos.map((p, i) => ({ active: i === (lb ?? 0), idle: i !== (lb ?? 0) }));
+    return { cases, columns, kpis, focus, detailStages, photos, photoCount: total, addPhoto: this.addPhoto, reqPhotos: this.reqPhotos, reqDone, photos4,
+      parts, partKpis, inspections, inspectDone, inspectPending,
+      docGroups, docOpen: dsel !== null, closeDoc: this.closeDoc,
+      docName: docSel ? docSel.name : '', docExt: docSel ? docSel.ext : '', docSlotId: 'doc-2481-' + (dsel ?? 0),
+      lightboxOpen: lb !== null, closeLightbox: this.closeLightbox, trackRef: this.trackRef, onTrackScroll: this.onTrackScroll,
+      prevPhoto: () => this.scrollLightbox(-1), nextPhoto: () => this.scrollLightbox(1), lightboxCounter: ((lb ?? 0) + 1) + ' / ' + total, lightboxDots };
+  }
+}
+</script>
+</body>
+</html>

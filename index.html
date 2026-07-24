@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>消防車両 製作管理</title>
+  <meta name="description" content="消防車両の製作工程・進捗・写真記録を管理する業務アプリ">
+
+  <!-- テーマ / PWA -->
+  <meta name="theme-color" content="#7c1e18">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="製作管理">
+  <link rel="manifest" href="manifest.webmanifest">
+
+  <!-- アイコン -->
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon_32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/android_192_xxxhdpi.png">
+  <link rel="apple-touch-icon" href="icons/ios_180_iphone-3x.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="icons/ios_152_ipad-2x.png">
+  <link rel="apple-touch-icon" sizes="167x167" href="icons/ios_167_ipad_pro.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/ios_180_iphone-3x.png">
+
+  <!-- フォント（Barlow Condensed / Barlow / Noto Sans JP） -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div id="root">
+    <div class="loading"><div class="spinner"></div><div>起動中…</div></div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+  <script>
+    // Service Worker 登録（PWA・オフラインシェル）
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW登録失敗', e));
+      });
+    }
+  </script>
+</body>
+</html>
