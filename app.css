@@ -317,7 +317,8 @@ textarea.input { resize: vertical; line-height: 1.5; min-height: 54px; }
   display: flex;
   align-items: center;
   gap: 22px;
-  padding: 14px 22px;
+  /* PWA スタンドアロン表示でセーフエリアと重ならないよう上に余白を確保 */
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 22px 14px;
   background: var(--fire-grad);
   color: #fff;
 }
@@ -367,7 +368,8 @@ textarea.input { resize: vertical; line-height: 1.5; min-height: 54px; }
   display: none;
   background: var(--fire-grad);
   color: #fff;
-  padding: 14px 16px;
+  /* iPhone のステータスバー（時計・電池）とかぶらないよう、セーフエリア分を上に確保 */
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 14px;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
