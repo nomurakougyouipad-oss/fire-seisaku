@@ -373,7 +373,7 @@ function renderBoard(view) {
   setMobileHeader(`
     <div>
       <div class="m-title">工程ボード</div>
-      <div class="m-sub">7工程カンバン ・ 長押しでカードを移動</div>
+      <div class="m-sub">7工程カンバン ・ ⠿を掴んで工程移動</div>
     </div>
     <button class="m-icon" id="m-add">＋</button>
   `);
@@ -393,7 +393,7 @@ function renderBoard(view) {
           <button class="btn btn-primary btn-sm" id="board-new">＋ 新規案件</button>
         </div>
       </div>
-      <div class="board-hint text-muted">カードをタップで詳細へ。<b>ドラッグ（スマホは長押し→ドラッグ）</b>で工程を移動できます。</div>
+      <div class="board-hint text-muted">カードをタップで詳細へ。右上の <b>⠿ をドラッグ</b>すると工程を移動できます（本体のスワイプはボードの横スクロール）。</div>
       <div class="kanban-scroll">
         <div class="kanban-grid" id="kanban"></div>
       </div>
@@ -450,7 +450,10 @@ function boardCard(c) {
       ${CORNERS}
       <div class="kc-top">
         <span class="mono" style="font-size:11px;color:var(--color-accent-800)">${esc(c.mgmtNo)}</span>
-        ${boardMark(c)}
+        <div class="kc-top-right">
+          ${boardMark(c)}
+          <button class="kc-handle" title="ドラッグして工程を移動" aria-label="ドラッグして工程を移動">⠿</button>
+        </div>
       </div>
       <div class="kc-type">${esc(c.type)}</div>
       <div class="text-muted kc-customer">${esc(c.customer || '—')}</div>
@@ -461,18 +464,26 @@ function boardCard(c) {
       </div>
     </div>
   `);
-  makeCardDraggable(card, c);
+  // カード本体のタップ（ハンドル以外）＝詳細へ遷移。
+  // スワイプ／スクロールでは click は発火しないため、横スクロールを妨げない。
+  card.addEventListener('click', (e) => {
+    if (e.target.closest('.kc-handle')) return;
+    go('#/case/' + encodeURIComponent(c.id));
+  });
+  makeHandleDraggable(card.querySelector('.kc-handle'), card, c);
   return card;
 }
 
-// ---- ドラッグ&ドロップ（マウス / タッチ両対応・Pointer Events） ----
-// タップ=詳細へ遷移 / ドラッグ=工程移動。スマホは長押しでドラッグ開始（誤操作防止）。
-function makeCardDraggable(cardEl, c) {
-  cardEl.addEventListener('pointerdown', (e) => {
+// ---- ドラッグ&ドロップ（ハンドル限定・マウス/タッチ両対応） ----
+// ハンドル(⠿)を掴んだ時だけドラッグで工程移動。カード本体のスワイプはボード横スクロールに委ねる。
+// ハンドルは CSS で touch-action:none を指定し、掴んだ指の動きをスクロールではなくドラッグに割り当てる。
+function makeHandleDraggable(handle, cardEl, c) {
+  handle.addEventListener('pointerdown', (e) => {
     if (e.button != null && e.button > 0) return; // マウスは左ボタンのみ
-    const isTouch = e.pointerType === 'touch';
+    e.preventDefault();   // クリック合成・スクロール開始・テキスト選択を抑止
+    e.stopPropagation();
     const startX = e.clientX, startY = e.clientY;
-    let dragging = false, moved = false, ghost = null, longPress = null;
+    let dragging = false, ghost = null;
 
     const positionGhost = (x, y) => {
       if (!ghost) return;
@@ -493,7 +504,7 @@ function makeCardDraggable(cardEl, c) {
       positionGhost(startX, startY);
       cardEl.classList.add('dragging-src');
       document.body.classList.add('board-dragging');
-      try { cardEl.setPointerCapture(e.pointerId); } catch (_) {}
+      try { handle.setPointerCapture(e.pointerId); } catch (_) {}
     };
 
     const highlight = (x, y) => {
@@ -505,38 +516,26 @@ function makeCardDraggable(cardEl, c) {
     };
 
     const onMove = (ev) => {
-      const dist = Math.hypot(ev.clientX - startX, ev.clientY - startY);
       if (!dragging) {
-        if (isTouch) {
-          // 長押し前に動いた＝スクロール意図。ドラッグ候補を取り消す
-          if (dist > 10) cleanup();
-          return;
-        }
-        if (dist > 6) beginDrag(); else return;
+        if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > 5) beginDrag();
+        else return;
       }
       ev.preventDefault();
-      moved = true;
       positionGhost(ev.clientX, ev.clientY);
       highlight(ev.clientX, ev.clientY);
     };
 
     const onUp = (ev) => {
       const wasDragging = dragging;
-      let target = null;
-      if (wasDragging) target = highlight(ev.clientX, ev.clientY);
+      const target = wasDragging ? highlight(ev.clientX, ev.clientY) : null;
       cleanup();
-      if (wasDragging) {
-        if (target) {
-          const idx = Number(target.dataset.stage);
-          if (Number.isInteger(idx) && idx !== c.stageIndex) moveCaseToStage(c, idx);
-        }
-      } else if (!moved) {
-        go('#/case/' + encodeURIComponent(c.id)); // タップ＝詳細へ
+      if (wasDragging && target) {
+        const idx = Number(target.dataset.stage);
+        if (Number.isInteger(idx) && idx !== c.stageIndex) moveCaseToStage(c, idx);
       }
     };
 
     const cleanup = () => {
-      clearTimeout(longPress);
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', cleanup);
@@ -551,8 +550,6 @@ function makeCardDraggable(cardEl, c) {
     window.addEventListener('pointermove', onMove, { passive: false });
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', cleanup);
-
-    if (isTouch) longPress = setTimeout(() => { if (!moved) beginDrag(); }, 220);
   });
 }
 

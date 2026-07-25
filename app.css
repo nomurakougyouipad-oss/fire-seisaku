@@ -728,13 +728,26 @@ textarea.input { resize: vertical; line-height: 1.5; min-height: 54px; }
 .kanban-card {
   padding: 10px 11px; display: flex; flex-direction: column; gap: 7px;
   background: var(--color-surface);
-  cursor: grab; user-select: none; -webkit-user-select: none;
-  touch-action: manipulation;
+  cursor: pointer; user-select: none; -webkit-user-select: none;
+  touch-action: manipulation; /* 本体のスワイプはボード横スクロールに委ねる */
   transition: background 0.12s;
 }
 .kanban-card:hover { background: var(--color-accent-100); }
-.kanban-card:active { cursor: grabbing; }
-.kc-top { display: flex; align-items: center; justify-content: space-between; min-height: 12px; }
+.kc-top { display: flex; align-items: center; justify-content: space-between; min-height: 28px; }
+.kc-top-right { display: flex; align-items: center; gap: 8px; }
+
+/* 移動ハンドル（このつまみを掴んだ時だけドラッグで工程移動できる） */
+.kc-handle {
+  border: none; background: none; color: var(--color-text-muted);
+  font-size: 16px; line-height: 1; letter-spacing: -1px;
+  padding: 6px; margin: -6px -4px -6px 0;
+  min-width: 34px; min-height: 34px;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: grab;
+  touch-action: none; /* ハンドル上では横スクロールさせず、指の動きをドラッグに割り当てる */
+}
+.kc-handle:hover { color: var(--color-accent-800); }
+.kc-handle:active { cursor: grabbing; color: var(--color-accent-800); }
 .kc-type { font-family: var(--font-heading); font-size: 13.5px; line-height: 1.2; }
 .kc-customer { font-size: 11px; }
 .kc-foot { display: flex; align-items: center; justify-content: space-between; font-size: 11px; }
