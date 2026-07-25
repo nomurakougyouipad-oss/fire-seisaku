@@ -4,11 +4,13 @@
 // ============================================================
 
 import {
-  ready, db,
+  ready, db, storage,
   collection, doc, addDoc, updateDoc, deleteDoc, setDoc,
   getDocs, getDoc, onSnapshot, query, orderBy, serverTimestamp, writeBatch,
+  storageRef, uploadBytes, getDownloadURL, deleteObject,
 } from './firebase.js';
 import { STAGES } from './util.js';
+import { resizeImage } from './image.js';
 
 const CASES = 'cases';
 
@@ -143,6 +145,45 @@ export async function updatePhoto(caseId, photoId, partial) {
 export async function deletePhoto(caseId, photoId) {
   await ready;
   await deleteDoc(doc(db, CASES, caseId, 'photos', photoId));
+}
+
+// カメラ/ファイルの画像を リサイズ → Storage へアップロード → 写真メタを Firestore に保存
+// 工程タグ(stageTag)は工程indexから自動付与。全端末へ onSnapshot で即共有される。
+export async function uploadStagePhoto(caseId, stageIndex, file, { takenBy = '', onStage } = {}) {
+  await ready;
+  const si = clampInt(stageIndex, 0, STAGES.length - 1);
+
+  if (onStage) onStage('resize');
+  const blob = await resizeImage(file); // 長辺1600px・約300KBのJPEG
+
+  if (onStage) onStage('upload');
+  const rand = Math.random().toString(36).slice(2, 8);
+  const path = `cases/${caseId}/${si}_${Date.now()}_${rand}.jpg`;
+  const sref = storageRef(storage, path);
+  await uploadBytes(sref, blob, { contentType: 'image/jpeg' });
+  const url = await getDownloadURL(sref);
+
+  if (onStage) onStage('save');
+  const id = await addPhoto(caseId, {
+    stageIndex: si,
+    stageTag: STAGES[si],
+    url,
+    path,
+    memo: '',
+    takenBy: (takenBy || '').trim(),
+    bytes: blob.size,
+  });
+  return { id, url, path };
+}
+
+// 写真を削除（Firestoreメタ + Storage実体）
+export async function removePhoto(caseId, photo) {
+  await ready;
+  await deleteDoc(doc(db, CASES, caseId, 'photos', photo.id));
+  if (photo.path) {
+    try { await deleteObject(storageRef(storage, photo.path)); }
+    catch (err) { console.warn('Storageの写真削除に失敗（メタは削除済み）:', err); }
+  }
 }
 
 // ---- シード（初回のみ・サンプル7件を投入） ----------------

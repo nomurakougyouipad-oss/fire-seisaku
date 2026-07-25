@@ -11,6 +11,7 @@ import {
 import {
   subscribeCases, subscribeCase, subscribePhotos,
   createCase, updateCase, patchCase, deleteCase, seedIfEmpty, getCase,
+  uploadStagePhoto, updatePhoto, removePhoto,
 } from './store.js';
 import { ready } from './firebase.js';
 
@@ -361,11 +362,13 @@ function mobileCard(c) {
 // ============================================================
 let detailPhotos = [];      // 現在案件の写真
 let mobileStageSel = null;  // モバイルで選択中の工程index
+let detailCaseId = null;    // 現在開いている案件ID（写真アップロード先）
 
 function renderDetail(view, id) {
   view.replaceChildren(loadingEl());
   detailPhotos = [];
   mobileStageSel = null;
+  detailCaseId = id;
 
   let current = null;
   const unsubCase = subscribeCase(id, (c) => {
@@ -474,15 +477,22 @@ function stageRowDesktop(c, i, name) {
     </div>
   `);
   const grid = row.querySelector('.photo-grid');
-  photos.forEach((p) => grid.appendChild(photoSlotDesktop(p)));
+  photos.forEach((p, idx) => grid.appendChild(photoSlotDesktop(p, idx, photos, name)));
   const add = h(`<button class="btn btn-secondary photo-add">＋<span>写真を追加</span></button>`);
-  add.onclick = () => addPhotoStub();
+  add.onclick = () => pickAndUploadPhotos(c.id, i);
   grid.appendChild(add);
   return row;
 }
 
-function photoSlotDesktop(p) {
-  const slot = h(`<div class="blueprint photo-slot">${CORNERS}<img alt="工程写真" src="${esc(p.url)}"></div>`);
+function photoSlotDesktop(p, idx, photos, stageName) {
+  const slot = h(`
+    <div class="blueprint photo-slot">${CORNERS}
+      <img alt="工程写真" src="${esc(p.url)}">
+      <button class="photo-del" title="削除">✕</button>
+    </div>
+  `);
+  slot.querySelector('img').onclick = () => openLightbox(photos, idx, stageName);
+  slot.querySelector('.photo-del').onclick = (e) => { e.stopPropagation(); confirmDeletePhoto(p); };
   return slot;
 }
 
@@ -543,7 +553,7 @@ function detailMobile(c) {
   const pwrap = wrap.querySelector('#m-photos');
   photos.forEach((p, idx) => pwrap.appendChild(photoBlockMobile(p, idx, photos, selName)));
 
-  wrap.querySelector('#m-addphoto').onclick = () => addPhotoStub();
+  wrap.querySelector('#m-addphoto').onclick = () => pickAndUploadPhotos(c.id, sel);
   wrap.querySelector('#m-edit2').onclick = () => openCaseForm(c);
   wrap.querySelector('#m-del2').onclick = () => confirmDelete(c);
   const adv = wrap.querySelector('#m-advance');
@@ -563,17 +573,113 @@ function photoBlockMobile(p, idx, photos, stageName) {
       <div style="display:flex;align-items:center;gap:9px;font-size:11px">
         <span class="tag tag-accent">${esc(stageName)}</span>
         <span class="text-muted" style="font-size:10px;letter-spacing:.05em">工程タグ自動</span>
+        <button class="btn btn-ghost btn-sm photo-del-text push" title="この写真を削除">削除</button>
       </div>
       <textarea class="input" placeholder="メモを入力（例：ホース収納部の取付を確認）" style="min-height:54px;font-size:13px">${esc(p.memo || '')}</textarea>
     </div>
   `);
   block.querySelector('.zoom').onclick = () => openLightbox(photos, idx, stageName);
+  block.querySelector('.photo-del-text').onclick = () => confirmDeletePhoto(p);
+  const ta = block.querySelector('textarea');
+  ta.addEventListener('change', () => saveMemo(p, ta.value));
   return block;
 }
 
-// 段階1では写真アップロード未実装 → 案内
-function addPhotoStub() {
-  toast('写真アップロードは段階2で有効になります');
+// ---- 写真アップロード（カメラ撮影 / ファイル選択） ----
+// 端末を問わず image/* を受け取り、リサイズ→アップロード→即同期。
+function pickAndUploadPhotos(caseId, stageIndex) {
+  const sheet = h(`
+    <div class="modal-backdrop sheet-backdrop">
+      <div class="photo-sheet blueprint">
+        ${CORNERS}
+        <div class="sheet-title">写真を追加（${esc(STAGES[stageIndex])}）</div>
+        <button class="btn btn-primary btn-block" data-src="camera">📷 カメラで撮影</button>
+        <button class="btn btn-secondary btn-block" data-src="file">🖼 ファイルから選択</button>
+        <button class="btn btn-ghost btn-block" data-src="cancel">キャンセル</button>
+      </div>
+    </div>
+  `);
+  const close = () => sheet.remove();
+  sheet.addEventListener('click', (e) => { if (e.target === sheet) close(); });
+  sheet.querySelector('[data-src="cancel"]').onclick = close;
+  sheet.querySelector('[data-src="camera"]').onclick = () => { close(); triggerFileInput(caseId, stageIndex, true); };
+  sheet.querySelector('[data-src="file"]').onclick = () => { close(); triggerFileInput(caseId, stageIndex, false); };
+  document.body.appendChild(sheet);
+}
+
+function triggerFileInput(caseId, stageIndex, useCamera) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  if (useCamera) input.setAttribute('capture', 'environment'); // 背面カメラで撮影
+  else input.multiple = true;                                   // ファイルは複数選択可
+  input.style.display = 'none';
+  input.addEventListener('change', async () => {
+    const files = Array.from(input.files || []);
+    input.remove();
+    if (files.length) await uploadFiles(caseId, stageIndex, files);
+  });
+  document.body.appendChild(input);
+  input.click();
+}
+
+async function uploadFiles(caseId, stageIndex, files) {
+  const total = files.length;
+  let ok = 0;
+  for (let i = 0; i < total; i++) {
+    const step = { resize: '画像を最適化中', upload: 'アップロード中', save: '保存中' };
+    showUpload(`写真を処理中… (${i + 1}/${total})`);
+    try {
+      await uploadStagePhoto(caseId, stageIndex, files[i], {
+        onStage: (s) => showUpload(`${step[s] || '処理中'}… (${i + 1}/${total})`),
+      });
+      ok++;
+    } catch (err) {
+      console.error('写真アップロード失敗:', err);
+      toast('アップロードに失敗しました：' + (err.message || err), 'err');
+    }
+  }
+  hideUpload();
+  if (ok) toast(`${ok}枚の写真を追加しました`);
+  // 追加後は subscribePhotos が発火し、詳細画面が自動で再描画される
+}
+
+// アップロード進捗のオーバーレイ
+let uploadBar = null;
+function showUpload(text) {
+  if (!uploadBar) {
+    uploadBar = h(`<div class="upload-bar"><span class="spinner sm"></span><span class="msg"></span></div>`);
+    document.body.appendChild(uploadBar);
+  }
+  uploadBar.querySelector('.msg').textContent = text;
+  uploadBar.style.display = 'flex';
+}
+function hideUpload() { if (uploadBar) uploadBar.style.display = 'none'; }
+
+// 写真メモを保存（変更時のみ）
+async function saveMemo(photo, memo) {
+  const next = memo || '';
+  if ((photo.memo || '') === next) return;
+  if (!detailCaseId) return;
+  try {
+    await updatePhoto(detailCaseId, photo.id, { memo: next });
+    photo.memo = next; // ローカルにも反映
+  } catch (err) {
+    console.error(err);
+    toast('メモの保存に失敗しました', 'err');
+  }
+}
+
+async function confirmDeletePhoto(photo) {
+  if (!detailCaseId) return;
+  if (!confirm('この写真を削除します。よろしいですか？')) return;
+  try {
+    await removePhoto(detailCaseId, photo);
+    toast('写真を削除しました');
+  } catch (err) {
+    console.error(err);
+    toast('写真の削除に失敗しました：' + (err.message || err), 'err');
+  }
 }
 
 // ---- ライトボックス（拡大ビューア） ----
@@ -606,17 +712,29 @@ function openLightbox(photos, startIdx, stageName) {
 
   const counter = lb.querySelector('.counter');
   const memo = lb.querySelector('textarea');
+  let curIdx = startIdx;
+  memo.value = photos[startIdx]?.memo || '';
   const update = () => {
     const i = Math.round(track.scrollLeft / track.clientWidth);
+    if (i === curIdx) return;
+    curIdx = i;
     counter.textContent = (i + 1) + ' / ' + photos.length;
     dotsWrap.querySelectorAll('span').forEach((s, k) => s.classList.toggle('on', k === i));
     memo.value = photos[i]?.memo || '';
   };
   track.addEventListener('scroll', debounce(update, 60));
+  // 拡大ビューアでもメモを編集・保存できる（全端末へ同期）
+  memo.addEventListener('change', () => { if (photos[curIdx]) saveMemo(photos[curIdx], memo.value); });
   lb.querySelector('.prev').onclick = () => track.scrollBy({ left: -track.clientWidth, behavior: 'smooth' });
   lb.querySelector('.next').onclick = () => track.scrollBy({ left: track.clientWidth, behavior: 'smooth' });
   const close = () => lb.remove();
   lb.querySelector('.x').onclick = close;
+  document.addEventListener('keydown', function onKey(e) {
+    if (!document.body.contains(lb)) { document.removeEventListener('keydown', onKey); return; }
+    if (e.key === 'Escape') close();
+    else if (e.key === 'ArrowLeft') track.scrollBy({ left: -track.clientWidth, behavior: 'smooth' });
+    else if (e.key === 'ArrowRight') track.scrollBy({ left: track.clientWidth, behavior: 'smooth' });
+  });
   document.body.appendChild(lb);
   requestAnimationFrame(() => { track.scrollLeft = track.clientWidth * startIdx; });
 }
