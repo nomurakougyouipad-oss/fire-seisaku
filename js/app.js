@@ -474,83 +474,122 @@ function boardCard(c) {
   return card;
 }
 
-// ---- ドラッグ&ドロップ（ハンドル限定・マウス/タッチ両対応） ----
+// ---- ドラッグ&ドロップ（ハンドル限定・タッチ/マウス個別実装） ----
 // ハンドル(⠿)を掴んだ時だけドラッグで工程移動。カード本体のスワイプはボード横スクロールに委ねる。
-// ハンドルは CSS で touch-action:none を指定し、掴んだ指の動きをスクロールではなくドラッグに割り当てる。
+// iPhone実機対応：touchstartで即座に「掴んだ」状態にし、touchmoveをpreventDefaultして
+// ページ全体のスクロールを止める。マウスは mousedown/move/up で同じ挙動を提供。
 function makeHandleDraggable(handle, cardEl, c) {
-  handle.addEventListener('pointerdown', (e) => {
-    if (e.button != null && e.button > 0) return; // マウスは左ボタンのみ
-    e.preventDefault();   // クリック合成・スクロール開始・テキスト選択を抑止
-    e.stopPropagation();
-    const startX = e.clientX, startY = e.clientY;
-    let dragging = false, ghost = null;
+  let grabbed = false, dragging = false, ghost = null;
+  let startX = 0, startY = 0;
 
-    const positionGhost = (x, y) => {
-      if (!ghost) return;
-      ghost.style.left = (x - ghost._ox) + 'px';
-      ghost.style.top = (y - ghost._oy) + 'px';
-    };
+  const positionGhost = (x, y) => {
+    if (!ghost) return;
+    ghost.style.left = (x - ghost._ox) + 'px';
+    ghost.style.top = (y - ghost._oy) + 'px';
+  };
 
-    const beginDrag = () => {
-      dragging = true;
-      dragState = { id: c.id };
-      const r = cardEl.getBoundingClientRect();
-      ghost = cardEl.cloneNode(true);
-      ghost.classList.add('drag-ghost');
-      ghost.style.width = r.width + 'px';
-      ghost._ox = startX - r.left;
-      ghost._oy = startY - r.top;
-      document.body.appendChild(ghost);
-      positionGhost(startX, startY);
-      cardEl.classList.add('dragging-src');
-      document.body.classList.add('board-dragging');
-      try { handle.setPointerCapture(e.pointerId); } catch (_) {}
-    };
+  // 掴んだ瞬間：視覚フィードバック＋スクロール凍結（まだゴーストは出さない）
+  const grab = (x, y) => {
+    grabbed = true;
+    startX = x; startY = y;
+    dragState = { id: c.id };
+    handle.classList.add('grabbing');
+    cardEl.classList.add('grabbed-src');
+    document.body.classList.add('board-dragging');
+  };
 
-    const highlight = (x, y) => {
-      const under = document.elementFromPoint(x, y);
-      const col = under && under.closest ? under.closest('.kanban-col') : null;
-      document.querySelectorAll('.kanban-col.drop-target').forEach((k) => { if (k !== col) k.classList.remove('drop-target'); });
-      if (col) col.classList.add('drop-target');
-      return col;
-    };
+  // 実際に動かし始めたらゴースト（浮いたカード）を生成
+  const beginDrag = (x, y) => {
+    dragging = true;
+    cardEl.classList.remove('grabbed-src');
+    cardEl.classList.add('dragging-src');
+    const r = cardEl.getBoundingClientRect();
+    ghost = cardEl.cloneNode(true);
+    ghost.classList.add('drag-ghost');
+    ghost.style.width = r.width + 'px';
+    ghost._ox = x - r.left;
+    ghost._oy = y - r.top;
+    document.body.appendChild(ghost);
+    positionGhost(x, y);
+  };
 
-    const onMove = (ev) => {
-      if (!dragging) {
-        if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > 5) beginDrag();
-        else return;
-      }
-      ev.preventDefault();
-      positionGhost(ev.clientX, ev.clientY);
-      highlight(ev.clientX, ev.clientY);
-    };
+  const highlight = (x, y) => {
+    const under = document.elementFromPoint(x, y);
+    const col = under && under.closest ? under.closest('.kanban-col') : null;
+    document.querySelectorAll('.kanban-col.drop-target').forEach((k) => { if (k !== col) k.classList.remove('drop-target'); });
+    if (col) col.classList.add('drop-target');
+    return col;
+  };
 
-    const onUp = (ev) => {
-      const wasDragging = dragging;
-      const target = wasDragging ? highlight(ev.clientX, ev.clientY) : null;
-      cleanup();
-      if (wasDragging && target) {
-        const idx = Number(target.dataset.stage);
-        if (Number.isInteger(idx) && idx !== c.stageIndex) moveCaseToStage(c, idx);
-      }
-    };
+  const moveTo = (x, y) => {
+    if (!dragging) {
+      if (Math.hypot(x - startX, y - startY) > 4) beginDrag(x, y);
+      else return;
+    }
+    positionGhost(x, y);
+    highlight(x, y);
+  };
 
-    const cleanup = () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('pointercancel', cleanup);
-      if (ghost) { ghost.remove(); ghost = null; }
-      cardEl.classList.remove('dragging-src');
-      document.body.classList.remove('board-dragging');
-      document.querySelectorAll('.kanban-col.drop-target').forEach((k) => k.classList.remove('drop-target'));
-      dragging = false;
-      dragState = null;
-    };
+  const drop = (x, y) => {
+    const wasDragging = dragging;
+    const target = wasDragging ? highlight(x, y) : null;
+    end();
+    if (wasDragging && target) {
+      const idx = Number(target.dataset.stage);
+      if (Number.isInteger(idx) && idx !== c.stageIndex) moveCaseToStage(c, idx);
+    }
+  };
 
-    window.addEventListener('pointermove', onMove, { passive: false });
-    window.addEventListener('pointerup', onUp);
-    window.addEventListener('pointercancel', cleanup);
-  });
+  const end = () => {
+    grabbed = false; dragging = false; dragState = null;
+    if (ghost) { ghost.remove(); ghost = null; }
+    handle.classList.remove('grabbing');
+    cardEl.classList.remove('grabbed-src');
+    cardEl.classList.remove('dragging-src');
+    document.body.classList.remove('board-dragging');
+    document.querySelectorAll('.kanban-col.drop-target').forEach((k) => k.classList.remove('drop-target'));
+    document.removeEventListener('touchmove', onTouchMove, { passive: false });
+    document.removeEventListener('touchend', onTouchEnd);
+    document.removeEventListener('touchcancel', onTouchCancel);
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mouseup', onMouseUp);
+  };
+
+  // --- タッチ（iPhone等） ---
+  function onTouchStart(e) {
+    if (grabbed) return;
+    e.preventDefault();  // スクロール開始・合成マウス/クリックを抑止（掴みを確実に）
+    const t = e.changedTouches[0];
+    grab(t.clientX, t.clientY);
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd);
+    document.addEventListener('touchcancel', onTouchCancel);
+  }
+  function onTouchMove(e) {
+    if (!grabbed) return;
+    e.preventDefault();  // ハンドルを掴んでいる間はページ全体のスクロールを止める
+    const t = e.touches[0] || e.changedTouches[0];
+    moveTo(t.clientX, t.clientY);
+  }
+  function onTouchEnd(e) {
+    const t = e.changedTouches[0];
+    drop(t.clientX, t.clientY);
+  }
+  function onTouchCancel() { end(); }
+
+  // --- マウス（PC） ---
+  function onMouseDown(e) {
+    if (e.button !== 0 || grabbed) return;
+    e.preventDefault();
+    grab(e.clientX, e.clientY);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  }
+  function onMouseMove(e) { if (grabbed) moveTo(e.clientX, e.clientY); }
+  function onMouseUp(e) { drop(e.clientX, e.clientY); }
+
+  handle.addEventListener('touchstart', onTouchStart, { passive: false });
+  handle.addEventListener('mousedown', onMouseDown);
 }
 
 async function moveCaseToStage(c, newIndex) {

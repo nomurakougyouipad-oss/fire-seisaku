@@ -739,15 +739,31 @@ textarea.input { resize: vertical; line-height: 1.5; min-height: 54px; }
 /* 移動ハンドル（このつまみを掴んだ時だけドラッグで工程移動できる） */
 .kc-handle {
   border: none; background: none; color: var(--color-text-muted);
-  font-size: 16px; line-height: 1; letter-spacing: -1px;
-  padding: 6px; margin: -6px -4px -6px 0;
-  min-width: 34px; min-height: 34px;
+  font-size: 20px; line-height: 1; letter-spacing: -1px;
+  /* 指で確実につまめるよう最低44×44pxのタッチ領域。負マージンでカード高の増加を抑える */
+  min-width: 44px; min-height: 44px; padding: 10px;
+  margin: -12px -10px -12px 0;
   display: inline-flex; align-items: center; justify-content: center;
   cursor: grab;
-  touch-action: none; /* ハンドル上では横スクロールさせず、指の動きをドラッグに割り当てる */
+  touch-action: none;               /* ハンドル上ではスクロールさせずドラッグ専用 */
+  -webkit-tap-highlight-color: transparent;
+  user-select: none; -webkit-user-select: none;
+  border-radius: var(--radius-sm, 4px);
+  transition: color 0.1s, background 0.1s, transform 0.1s;
 }
 .kc-handle:hover { color: var(--color-accent-800); }
-.kc-handle:active { cursor: grabbing; color: var(--color-accent-800); }
+/* 掴んだ瞬間のフィードバック：色が変わり・背景が付き・少し拡大する */
+.kc-handle:active,
+.kc-handle.grabbing {
+  cursor: grabbing;
+  color: #fff; background: var(--color-accent-600);
+  transform: scale(1.18);
+}
+/* 掴んでいる間（まだ動かす前）の元カードを軽く強調 */
+.kanban-card.grabbed-src {
+  outline: 2px solid var(--color-accent); outline-offset: -1px;
+  box-shadow: var(--shadow-md);
+}
 .kc-type { font-family: var(--font-heading); font-size: 13.5px; line-height: 1.2; }
 .kc-customer { font-size: 11px; }
 .kc-foot { display: flex; align-items: center; justify-content: space-between; font-size: 11px; }
