@@ -37,9 +37,14 @@ async function boot() {
   window.addEventListener('hashchange', () => { state.route = parseHash(); renderRoute(); });
   state.route = parseHash();
 
-  // 全案件をグローバル購読（一覧の即時反映用）
+  // 全案件をグローバル購読（一覧・工程ボードの即時反映用）
   subscribeCases(
-    (rows) => { state.casesRaw = rows; state.loading = false; if (state.route.name === 'orders') renderRoute(); updateBadges(); },
+    (rows) => {
+      state.casesRaw = rows; state.loading = false;
+      // ドラッグ操作中は再描画を抑止（ドロップ確定後の更新で反映される）
+      if ((state.route.name === 'orders' || state.route.name === 'board') && !dragState) renderRoute();
+      updateBadges();
+    },
     (err) => { state.loading = false; state.authError = true; renderRoute(); }
   );
 
@@ -133,7 +138,7 @@ function renderRoute() {
   switch (name) {
     case 'orders': renderOrders(view); break;
     case 'case': renderDetail(view, param); break;
-    case 'board': renderPlaceholder(view, '工程ボード', '段階3で実装します。', '▦'); break;
+    case 'board': renderBoard(view); break;
     case 'parts': renderPlaceholder(view, '部品・資材', '段階3で実装します。', '◫'); break;
     case 'inspection': renderPlaceholder(view, '検査', '段階3で実装します。', '✓'); break;
     case 'docs': renderPlaceholder(view, '図面・仕様書', '段階4で実装します。', '📐'); break;
@@ -355,6 +360,210 @@ function mobileCard(c) {
   card.addEventListener('click', () => go('#/case/' + encodeURIComponent(c.id)));
   card.style.cursor = 'pointer';
   return card;
+}
+
+// ============================================================
+// 工程ボード（1c: 7工程カンバン / ドラッグ&ドロップで工程移動）
+// ============================================================
+let dragState = null;       // ドラッグ中の状態（null=非ドラッグ）
+let boardScrollLeft = 0;    // 横スクロール位置を再描画後も保持
+
+function renderBoard(view) {
+  const lateCount = state.casesRaw.map((c) => decorateCase(c)).filter((c) => c.status === '遅延').length;
+  setMobileHeader(`
+    <div>
+      <div class="m-title">工程ボード</div>
+      <div class="m-sub">7工程カンバン ・ 長押しでカードを移動</div>
+    </div>
+    <button class="m-icon" id="m-add">＋</button>
+  `);
+  document.getElementById('fab').style.display = '';
+
+  if (state.loading) { view.replaceChildren(loadingEl()); return; }
+
+  const el = h(`
+    <div class="container board-container">
+      <div class="page-head board-head">
+        <div>
+          <div class="eyebrow">Process Board</div>
+          <h2>工程ボード</h2>
+        </div>
+        <div class="board-tools">
+          <span class="tag ${lateCount ? 'tag-late' : 'tag-outline'}">遅延 ${lateCount}</span>
+          <button class="btn btn-primary btn-sm" id="board-new">＋ 新規案件</button>
+        </div>
+      </div>
+      <div class="board-hint text-muted">カードをタップで詳細へ。<b>ドラッグ（スマホは長押し→ドラッグ）</b>で工程を移動できます。</div>
+      <div class="kanban-scroll">
+        <div class="kanban-grid" id="kanban"></div>
+      </div>
+    </div>
+  `);
+
+  const grid = el.querySelector('#kanban');
+  const decorated = state.casesRaw.map((c) => decorateCase(c));
+
+  STAGES.forEach((name, i) => {
+    const cases = decorated.filter((c) => c.stageIndex === i);
+    const col = h(`
+      <div class="kanban-col" data-stage="${i}">
+        <div class="col-head">
+          <div class="col-title">
+            <span class="mono text-muted" style="font-size:11px">${String(i + 1).padStart(2, '0')}</span>
+            <span class="col-name">${esc(name)}</span>
+          </div>
+          <span class="mono col-count">${cases.length}</span>
+        </div>
+        <div class="col-body"></div>
+      </div>
+    `);
+    const body = col.querySelector('.col-body');
+    if (cases.length === 0) {
+      body.appendChild(h(`<div class="col-empty text-muted">—</div>`));
+    } else {
+      cases.forEach((c) => body.appendChild(boardCard(c)));
+    }
+    grid.appendChild(col);
+  });
+
+  const scroller = el.querySelector('.kanban-scroll');
+  scroller.addEventListener('scroll', () => { boardScrollLeft = scroller.scrollLeft; });
+
+  el.querySelector('#board-new').onclick = () => openCaseForm(null);
+
+  view.replaceChildren(el);
+  requestAnimationFrame(() => { scroller.scrollLeft = boardScrollLeft; });
+
+  const mAdd = document.getElementById('m-add');
+  if (mAdd) mAdd.onclick = () => openCaseForm(null);
+}
+
+function boardMark(c) {
+  if (c.isLate) return `<span class="board-mark late" title="遅延"></span>`;
+  if (c.isWarn) return `<span class="board-mark warn" title="要注意"></span>`;
+  return '';
+}
+
+function boardCard(c) {
+  const card = h(`
+    <div class="blueprint kanban-card" style="--bar:${c.barColor}" data-id="${esc(c.id)}">
+      ${CORNERS}
+      <div class="kc-top">
+        <span class="mono" style="font-size:11px;color:var(--color-accent-800)">${esc(c.mgmtNo)}</span>
+        ${boardMark(c)}
+      </div>
+      <div class="kc-type">${esc(c.type)}</div>
+      <div class="text-muted kc-customer">${esc(c.customer || '—')}</div>
+      ${stepperHTML(c.steps)}
+      <div class="kc-foot">
+        <span class="mono">${c.dueShort}</span>
+        <span class="mono" style="color:var(--color-accent-800)">${pct(c.progress)}</span>
+      </div>
+    </div>
+  `);
+  makeCardDraggable(card, c);
+  return card;
+}
+
+// ---- ドラッグ&ドロップ（マウス / タッチ両対応・Pointer Events） ----
+// タップ=詳細へ遷移 / ドラッグ=工程移動。スマホは長押しでドラッグ開始（誤操作防止）。
+function makeCardDraggable(cardEl, c) {
+  cardEl.addEventListener('pointerdown', (e) => {
+    if (e.button != null && e.button > 0) return; // マウスは左ボタンのみ
+    const isTouch = e.pointerType === 'touch';
+    const startX = e.clientX, startY = e.clientY;
+    let dragging = false, moved = false, ghost = null, longPress = null;
+
+    const positionGhost = (x, y) => {
+      if (!ghost) return;
+      ghost.style.left = (x - ghost._ox) + 'px';
+      ghost.style.top = (y - ghost._oy) + 'px';
+    };
+
+    const beginDrag = () => {
+      dragging = true;
+      dragState = { id: c.id };
+      const r = cardEl.getBoundingClientRect();
+      ghost = cardEl.cloneNode(true);
+      ghost.classList.add('drag-ghost');
+      ghost.style.width = r.width + 'px';
+      ghost._ox = startX - r.left;
+      ghost._oy = startY - r.top;
+      document.body.appendChild(ghost);
+      positionGhost(startX, startY);
+      cardEl.classList.add('dragging-src');
+      document.body.classList.add('board-dragging');
+      try { cardEl.setPointerCapture(e.pointerId); } catch (_) {}
+    };
+
+    const highlight = (x, y) => {
+      const under = document.elementFromPoint(x, y);
+      const col = under && under.closest ? under.closest('.kanban-col') : null;
+      document.querySelectorAll('.kanban-col.drop-target').forEach((k) => { if (k !== col) k.classList.remove('drop-target'); });
+      if (col) col.classList.add('drop-target');
+      return col;
+    };
+
+    const onMove = (ev) => {
+      const dist = Math.hypot(ev.clientX - startX, ev.clientY - startY);
+      if (!dragging) {
+        if (isTouch) {
+          // 長押し前に動いた＝スクロール意図。ドラッグ候補を取り消す
+          if (dist > 10) cleanup();
+          return;
+        }
+        if (dist > 6) beginDrag(); else return;
+      }
+      ev.preventDefault();
+      moved = true;
+      positionGhost(ev.clientX, ev.clientY);
+      highlight(ev.clientX, ev.clientY);
+    };
+
+    const onUp = (ev) => {
+      const wasDragging = dragging;
+      let target = null;
+      if (wasDragging) target = highlight(ev.clientX, ev.clientY);
+      cleanup();
+      if (wasDragging) {
+        if (target) {
+          const idx = Number(target.dataset.stage);
+          if (Number.isInteger(idx) && idx !== c.stageIndex) moveCaseToStage(c, idx);
+        }
+      } else if (!moved) {
+        go('#/case/' + encodeURIComponent(c.id)); // タップ＝詳細へ
+      }
+    };
+
+    const cleanup = () => {
+      clearTimeout(longPress);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', cleanup);
+      if (ghost) { ghost.remove(); ghost = null; }
+      cardEl.classList.remove('dragging-src');
+      document.body.classList.remove('board-dragging');
+      document.querySelectorAll('.kanban-col.drop-target').forEach((k) => k.classList.remove('drop-target'));
+      dragging = false;
+      dragState = null;
+    };
+
+    window.addEventListener('pointermove', onMove, { passive: false });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', cleanup);
+
+    if (isTouch) longPress = setTimeout(() => { if (!moved) beginDrag(); }, 220);
+  });
+}
+
+async function moveCaseToStage(c, newIndex) {
+  const nextProgress = Math.max(Number(c.progress) || 0, autoProgress(newIndex));
+  try {
+    await patchCase(c.id, { stageIndex: newIndex, progress: nextProgress });
+    toast(`「${c.mgmtNo}」を「${STAGES[newIndex]}」へ移動しました`);
+  } catch (err) {
+    toast('工程の更新に失敗しました：' + (err.message || err), 'err');
+  }
 }
 
 // ============================================================

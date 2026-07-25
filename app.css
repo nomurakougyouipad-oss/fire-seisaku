@@ -698,6 +698,66 @@ textarea.input { resize: vertical; line-height: 1.5; min-height: 54px; }
 .placeholder-page { padding: 60px 26px; text-align: center; color: var(--color-text-muted); }
 
 /* ============================================================
+   工程ボード（カンバン）
+   ============================================================ */
+.board-head { align-items: flex-start; }
+.board-tools { display: flex; align-items: center; gap: 10px; }
+.board-hint { font-size: 12px; margin-top: -4px; }
+.board-hint b { color: var(--color-accent-800); font-weight: 600; }
+
+.kanban-scroll {
+  overflow-x: auto; overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 6px;
+}
+.kanban-grid { display: flex; gap: 10px; align-items: flex-start; min-width: min-content; }
+.kanban-col { flex: 1 1 0; min-width: 156px; display: flex; flex-direction: column; gap: 10px; }
+.col-head {
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 2px solid var(--color-accent); padding-bottom: 6px;
+}
+.col-title { display: flex; align-items: baseline; gap: 6px; }
+.col-name { font-family: var(--font-heading); font-size: 16px; }
+.col-count { font-size: 12px; color: var(--color-accent-800); }
+.col-body {
+  display: flex; flex-direction: column; gap: 8px;
+  min-height: 90px; padding: 2px; transition: background 0.12s;
+}
+.col-empty { font-size: 12px; text-align: center; padding: 16px 0; opacity: 0.5; }
+
+.kanban-card {
+  padding: 10px 11px; display: flex; flex-direction: column; gap: 7px;
+  background: var(--color-surface);
+  cursor: grab; user-select: none; -webkit-user-select: none;
+  touch-action: manipulation;
+  transition: background 0.12s;
+}
+.kanban-card:hover { background: var(--color-accent-100); }
+.kanban-card:active { cursor: grabbing; }
+.kc-top { display: flex; align-items: center; justify-content: space-between; min-height: 12px; }
+.kc-type { font-family: var(--font-heading); font-size: 13.5px; line-height: 1.2; }
+.kc-customer { font-size: 11px; }
+.kc-foot { display: flex; align-items: center; justify-content: space-between; font-size: 11px; }
+.board-mark { width: 8px; height: 8px; display: inline-block; flex: none; }
+.board-mark.late { background: var(--color-accent-900); }
+.board-mark.warn { box-shadow: inset 0 0 0 1.5px var(--color-accent); }
+
+/* ドラッグ中 */
+.kanban-card.dragging-src { opacity: 0.35; }
+.drag-ghost {
+  position: fixed; z-index: 120; margin: 0;
+  pointer-events: none; opacity: 0.96;
+  box-shadow: var(--shadow-lg); transform: rotate(1.2deg);
+}
+.kanban-col.drop-target > .col-body {
+  background: var(--color-accent-100);
+  outline: 2px dashed var(--color-accent); outline-offset: -2px;
+}
+.board-dragging { touch-action: none; cursor: grabbing; }
+.board-dragging * { user-select: none; -webkit-user-select: none; }
+.board-dragging .kanban-scroll { overflow: hidden; touch-action: none; }
+
+/* ============================================================
    レスポンシブ
    ============================================================ */
 @media (max-width: 860px) {
