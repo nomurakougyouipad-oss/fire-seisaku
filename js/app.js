@@ -828,7 +828,7 @@ function photoBlockMobile(p, idx, photos, stageName) {
         <span class="text-muted" style="font-size:10px;letter-spacing:.05em">工程タグ自動</span>
         <button class="btn btn-ghost btn-sm photo-del-text push" title="この写真を削除">削除</button>
       </div>
-      <textarea class="input" placeholder="メモを入力（例：ホース収納部の取付を確認）" style="min-height:54px;font-size:13px">${esc(p.memo || '')}</textarea>
+      <textarea class="input" placeholder="メモを入力（例：ホース収納部の取付を確認）" style="min-height:54px;font-size:16px">${esc(p.memo || '')}</textarea>
     </div>
   `);
   block.querySelector('.zoom').onclick = () => openLightbox(photos, idx, stageName);
@@ -954,7 +954,7 @@ function openLightbox(photos, startIdx, stageName) {
           <span class="tag tag-accent">${esc(stageName)}</span>
           <span style="opacity:.7;font-size:10px;letter-spacing:.05em">工程タグ自動</span>
         </div>
-        <textarea class="input" placeholder="メモを入力" style="min-height:52px;font-size:13px;background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.25)"></textarea>
+        <textarea class="input" placeholder="メモを入力" style="min-height:52px;font-size:16px;background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.25)"></textarea>
       </div>
     </div>
   `);

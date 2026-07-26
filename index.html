@@ -30,6 +30,25 @@
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
+  <script>
+    // ページ全体のピンチ／ダブルタップ拡大を無効化する。
+    // ボタンや入力のタップで画面が勝手に拡大するのを防ぐ（touch-action と併用）。
+    // 写真拡大ビューア(.lightbox)内だけは指でのズーム操作を許可する（除外）。
+    (function () {
+      function inLightbox(t) { return !!(t && t.closest && t.closest('.lightbox')); }
+      // iOS Safari のピンチジェスチャを抑止
+      ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (ev) {
+        document.addEventListener(ev, function (e) {
+          if (!inLightbox(e.target)) e.preventDefault();
+        }, { passive: false });
+      });
+      // 2本指のタッチ移動（ピンチ）を抑止（touch-action非対応環境の保険）
+      document.addEventListener('touchmove', function (e) {
+        if (e.touches && e.touches.length > 1 && !inLightbox(e.target)) e.preventDefault();
+      }, { passive: false });
+    })();
+  </script>
+
   <div id="root">
     <div class="loading"><div class="spinner"></div><div>起動中…</div></div>
   </div>

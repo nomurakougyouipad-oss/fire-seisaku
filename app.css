@@ -310,7 +310,18 @@ textarea.input { resize: vertical; line-height: 1.5; min-height: 54px; }
 /* ============================================================
    アプリシェル：ナビ
    ============================================================ */
-.app { min-height: 100%; display: flex; flex-direction: column; }
+.app {
+  min-height: 100%; display: flex; flex-direction: column;
+  /* アプリ全体はスクロールのみ許可（ピンチ／ダブルタップ拡大を無効化）。
+     写真拡大ビューア(.lightbox)は .app の外(body直下)なので影響を受けない。 */
+  touch-action: pan-x pan-y;
+}
+/* モーダル・シート類も body 直下だが、拡大は不要なのでスクロールのみ許可 */
+.modal-backdrop { touch-action: pan-y; }
+/* 写真拡大ビューアだけはズーム操作(ピンチ/ダブルタップ)を許可 */
+.lightbox, .lightbox * { touch-action: auto; }
+.lightbox-track { touch-action: pan-x pinch-zoom; }
+.lightbox-slide img { touch-action: pinch-zoom; }
 
 /* PC トップナビ（赤グラデ帯） */
 .topnav {
@@ -825,6 +836,14 @@ textarea.input { resize: vertical; line-height: 1.5; min-height: 54px; }
   .detail-desktop { display: none; }
   .pc-only { display: none !important; }
   .m-only { display: flex; }
+
+  /* iOSは16px未満の入力にフォーカスすると自動でズームする。
+     フォーム要素を16pxにして「ボタン→入力フォーカス」時の勝手な拡大を防止。
+     （.lightbox内のメモは拡大を許可する例外なので対象外） */
+  .input, .select, textarea.input,
+  input:not([type="radio"]):not([type="checkbox"]), select, textarea {
+    font-size: 16px;
+  }
 }
 
 @media (min-width: 861px) {
