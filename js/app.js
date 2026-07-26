@@ -953,7 +953,11 @@ function openLightbox(photos, startIdx, stageName) {
     </div>
   `);
   const track = lb.querySelector('.lightbox-track');
-  photos.forEach((p) => track.appendChild(h(`<div class="lightbox-slide"><img alt="写真" src="${esc(p.url)}"></div>`)));
+  photos.forEach((p) => {
+    const slide = h(`<div class="lightbox-slide"><img alt="写真" src="${esc(p.url)}"></div>`);
+    enableMouseZoom(slide, slide.querySelector('img'));
+    track.appendChild(slide);
+  });
   const dotsWrap = lb.querySelector('.lightbox-dots');
   photos.forEach((_, i) => dotsWrap.appendChild(h(`<span class="${i === startIdx ? 'on' : ''}"></span>`)));
 
@@ -984,6 +988,70 @@ function openLightbox(photos, startIdx, stageName) {
   });
   document.body.appendChild(lb);
   requestAnimationFrame(() => { track.scrollLeft = track.clientWidth * startIdx; });
+}
+
+// PC(マウス)向けの写真ズーム。
+// ・クリックで拡大/元に戻る（トグル）／ホイールで拡大縮小／拡大中はドラッグで移動
+// ・スマホのピンチ拡大はネイティブのまま維持（マウス操作にのみ反応）
+function enableMouseZoom(slide, img) {
+  const MIN = 1, MAX = 5, TOGGLE = 2.5;
+  let scale = 1, tx = 0, ty = 0;
+  let dragging = false, sx = 0, sy = 0, downX = 0, downY = 0, moved = false;
+  let lastPointerType = 'mouse';
+
+  const apply = () => {
+    img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+    img.style.transition = dragging ? 'none' : 'transform .12s ease-out';
+    img.style.cursor = scale > 1 ? (dragging ? 'grabbing' : 'grab') : 'zoom-in';
+    slide.classList.toggle('zoomed', scale > 1);
+  };
+  const setScale = (s) => {
+    scale = Math.max(MIN, Math.min(MAX, s));
+    if (scale === 1) { tx = 0; ty = 0; }
+    apply();
+  };
+
+  // ホイールで拡大縮小（画像上ではページ/トラックのスクロールを止める）
+  img.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    setScale(scale * (e.deltaY < 0 ? 1.2 : 1 / 1.2));
+  }, { passive: false });
+
+  // 拡大中のドラッグで表示位置を移動（マウスのみ）
+  img.addEventListener('pointerdown', (e) => {
+    lastPointerType = e.pointerType;
+    if (e.pointerType !== 'mouse' || e.button !== 0 || scale <= 1) return;
+    dragging = true; moved = false;
+    downX = e.clientX; downY = e.clientY;
+    sx = e.clientX - tx; sy = e.clientY - ty;
+    try { img.setPointerCapture(e.pointerId); } catch (_) {}
+    e.preventDefault();
+    apply();
+  });
+  img.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    tx = e.clientX - sx; ty = e.clientY - sy;
+    if (Math.hypot(e.clientX - downX, e.clientY - downY) > 3) moved = true;
+    apply();
+  });
+  const endDrag = (e) => {
+    if (!dragging) return;
+    dragging = false;
+    try { img.releasePointerCapture(e.pointerId); } catch (_) {}
+    apply();
+  };
+  img.addEventListener('pointerup', endDrag);
+  img.addEventListener('pointercancel', endDrag);
+
+  // クリックで拡大/縮小トグル（マウスのみ・ドラッグ直後は無視）。タッチのタップは対象外。
+  img.addEventListener('click', (e) => {
+    if (lastPointerType !== 'mouse') return;
+    if (moved) { moved = false; return; }
+    setScale(scale > 1 ? 1 : TOGGLE);
+  });
+
+  // ネイティブの画像ドラッグ（ゴースト）を無効化
+  img.addEventListener('dragstart', (e) => e.preventDefault());
 }
 
 // ---- 進捗操作 ----

@@ -55,10 +55,40 @@
 
   <script type="module" src="js/app.js"></script>
   <script>
-    // Service Worker 登録（PWA・オフラインシェル）
+    // Service Worker 登録（PWA・オフラインシェル）＋ 自動更新
+    // 新しい版を検知したら skipWaiting 済みの新SWが即座に有効化 → controllerchange で
+    // 現在のページを1回だけ自動リロードし、確実に最新へ切り替える。
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW登録失敗', e));
+      var swReloaded = false;
+      var hadController = !!navigator.serviceWorker.controller;
+
+      function showUpdatePill(text) {
+        var el = document.createElement('div');
+        el.textContent = text;
+        el.style.cssText = 'position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));'
+          + 'transform:translateX(-50%);z-index:200;background:#1d1f20;color:#fff;'
+          + 'padding:10px 16px;font:600 13px/1.4 system-ui,sans-serif;'
+          + 'box-shadow:0 8px 24px rgba(0,0,0,.3);white-space:nowrap;';
+        document.body.appendChild(el);
+      }
+
+      // 新しいSWが制御を握った瞬間に一度だけ再読み込み（初回インストール時は不要）
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (swReloaded || !hadController) return;
+        swReloaded = true;
+        showUpdatePill('新しい版に更新しています…');
+        setTimeout(function () { window.location.reload(); }, 800);
+      });
+
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').then(function (reg) {
+          // 起動時に更新チェック
+          reg.update().catch(function () {});
+          // 画面に戻ったときも更新チェック（ホーム画面PWAの長時間起動対策）
+          document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'visible') reg.update().catch(function () {});
+          });
+        }).catch(function (e) { console.warn('SW登録失敗', e); });
       });
     }
   </script>
