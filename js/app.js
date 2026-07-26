@@ -196,9 +196,9 @@ function renderOrders(view) {
       <div class="m-title">Fire apparatus production</div>
       <div class="m-sub">製作案件 ${state.casesRaw.length}件</div>
     </div>
-    <button class="m-icon" id="m-add">≡</button>
   `);
-  document.getElementById('fab').style.display = '';
+  // モバイルはツールバーの「＋新規案件」に一本化（右上アイコン・FABは非表示）
+  document.getElementById('fab').style.display = 'none';
 
   if (state.loading) { view.replaceChildren(loadingEl()); return; }
 
@@ -276,9 +276,6 @@ function renderOrders(view) {
 
   view.replaceChildren(el);
   fillOrderRows(rows);
-
-  const mAdd = document.getElementById('m-add');
-  if (mAdd) mAdd.onclick = () => openCaseForm(null);
 }
 
 function refreshOrderRows() { fillOrderRows(getVisibleCases()); }
@@ -383,9 +380,9 @@ function renderBoard(view) {
       <div class="m-title">工程ボード</div>
       <div class="m-sub">7工程カンバン ・ ⠿を掴んで工程移動</div>
     </div>
-    <button class="m-icon" id="m-add">＋</button>
   `);
-  document.getElementById('fab').style.display = '';
+  // モバイルはツールバーの「＋新規案件」に一本化（右上アイコン・FABは非表示）
+  document.getElementById('fab').style.display = 'none';
 
   if (state.loading) { view.replaceChildren(loadingEl()); return; }
 
@@ -441,9 +438,6 @@ function renderBoard(view) {
 
   view.replaceChildren(el);
   requestAnimationFrame(() => { scroller.scrollLeft = boardScrollLeft; });
-
-  const mAdd = document.getElementById('m-add');
-  if (mAdd) mAdd.onclick = () => openCaseForm(null);
 }
 
 function boardMark(c) {
@@ -1165,8 +1159,8 @@ function renderParts(view) {
       <div class="m-title">部品・資材</div>
       <div class="m-sub">在庫と発注状況</div>
     </div>
-    <button class="m-icon" id="m-part-add">＋</button>
   `);
+  // モバイルはツールバーの「＋発注登録」に一本化（右上アイコン・FABは非表示）
   document.getElementById('fab').style.display = 'none';
   view.replaceChildren(loadingEl());
 
@@ -1183,9 +1177,6 @@ function renderParts(view) {
       .then((seeded) => { if (seeded) toast('サンプル部品を登録しました'); })
       .catch(() => {});
   }
-
-  const mAdd = document.getElementById('m-part-add');
-  if (mAdd) mAdd.onclick = () => openPartForm(null);
 }
 
 function getVisibleParts(all) {

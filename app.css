@@ -840,7 +840,7 @@ textarea.input { resize: vertical; line-height: 1.5; min-height: 54px; }
   .topnav { display: none; }
   .mobilehdr { display: flex; }
   .tabbar { display: flex; }
-  .fab { display: inline-flex; }
+  /* FABは廃止：各画面の「＋新規案件 / ＋発注登録」ボタンに一本化 */
   .container { padding: 12px 14px 96px; gap: 14px; }
   .table-wrap { display: none; }
   .cardlist { display: flex; }
