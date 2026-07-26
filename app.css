@@ -320,8 +320,11 @@ textarea.input { resize: vertical; line-height: 1.5; min-height: 54px; }
 .modal-backdrop { touch-action: pan-y; }
 /* 写真拡大ビューアだけはズーム操作(ピンチ/ダブルタップ)を許可 */
 .lightbox, .lightbox * { touch-action: auto; }
+/* 横スワイプ(pan-x)でスナップ移動、ピンチで拡大の両方を許可。
+   ネイティブ拡大中は1本指ドラッグがビューポート移動に使われるため、
+   スワイプでの写真送りは誤発火しない。 */
 .lightbox-track { touch-action: pan-x pinch-zoom; }
-.lightbox-slide img { touch-action: pinch-zoom; }
+.lightbox-slide img { touch-action: pan-x pinch-zoom; }
 
 /* PC トップナビ（赤グラデ帯） */
 .topnav {
