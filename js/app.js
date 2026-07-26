@@ -818,12 +818,14 @@ function detailMobile(c) {
         </div>
         <div id="m-photos" style="display:flex;flex-direction:column;gap:13px"></div>
         <button class="btn btn-secondary btn-block" style="height:50px" id="m-addphoto">＋ 写真を追加</button>
-        <button class="btn btn-danger btn-block" style="height:46px;margin-top:18px" id="m-del3">🗑 この案件を削除</button>
+        <div style="display:flex;gap:10px;margin-top:18px">
+          <button class="btn btn-secondary btn-block" style="height:46px;flex:1" id="m-edit3">✎ この案件を編集</button>
+          <button class="btn btn-danger btn-block" style="height:46px;flex:1" id="m-del3">🗑 この案件を削除</button>
+        </div>
       </div>
 
       <div class="bottombar">
-        <button class="btn btn-secondary btn-icon" id="m-edit2" title="編集">✎</button>
-        <button class="btn btn-primary" style="flex:1;height:44px" id="m-advance" ${c.stageIndex >= STAGES.length - 1 ? 'disabled' : ''}>次の工程へ進める →</button>
+        <button class="btn btn-primary btn-block" style="height:44px" id="m-advance" ${c.stageIndex >= STAGES.length - 1 ? 'disabled' : ''}>次の工程へ進める →</button>
       </div>
     </div>
   `);
@@ -845,7 +847,7 @@ function detailMobile(c) {
   photos.forEach((p, idx) => pwrap.appendChild(photoBlockMobile(p, idx, photos, selName)));
 
   wrap.querySelector('#m-addphoto').onclick = () => pickAndUploadPhotos(c.id, sel);
-  wrap.querySelector('#m-edit2').onclick = () => openCaseForm(c);
+  wrap.querySelector('#m-edit3').onclick = () => openCaseForm(c);
   wrap.querySelector('#m-del3').onclick = () => confirmDelete(c);
   const adv = wrap.querySelector('#m-advance');
   if (adv) adv.onclick = () => advanceStage(c);
