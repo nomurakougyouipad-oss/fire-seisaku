@@ -5,14 +5,16 @@
 // ============================================================
 
 import {
-  STAGES, STATUSES, PART_KINDS, PART_STATUSES, yen, pct, autoProgress,
-  decorateCase, decoratePart, esc, h, toast, CORNERS, stepperHTML, todayLabel, clamp,
+  STAGES, STATUSES, PART_KINDS, PART_STATUSES, JUDGES, judgeClass, nextJudge,
+  yen, pct, autoProgress, decorateCase, decoratePart, esc, h, toast, CORNERS,
+  stepperHTML, todayLabel, dueShort, clamp,
 } from './util.js';
 import {
   subscribeCases, subscribeCase, subscribePhotos,
   createCase, updateCase, patchCase, deleteCase, seedIfEmpty, getCase,
   uploadStagePhoto, updatePhoto, removePhoto,
   subscribeParts, createPart, updatePart, deletePart, seedPartsIfEmpty,
+  subscribeInspections, addInspection, updateInspection, deleteInspection, seedInspectionsIfEmpty,
 } from './store.js';
 import { ready } from './firebase.js';
 
@@ -30,10 +32,15 @@ const state = {
   partSearch: '',
   partKind: 'all',        // 'all' | '部品' | '資材'
   partStatus: 'all',      // 'all' | 未発注 | 発注済 | 入荷待ち | 入荷済
+  // 検査
+  inspRaw: [],
+  inspLoading: true,
+  inspCaseId: null,
 };
 
 let unsubView = null;      // 現在ビューの購読解除
 let partsSeedTried = false;
+const inspSeedTried = new Set();  // 検査の標準項目を自動投入済みの案件
 
 const IMG_ICON = `<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 15l-5-5L4 21"/></svg>`;
 
@@ -50,7 +57,9 @@ async function boot() {
     (rows) => {
       state.casesRaw = rows; state.loading = false;
       // ドラッグ操作中は再描画を抑止（ドロップ確定後の更新で反映される）
-      if ((state.route.name === 'orders' || state.route.name === 'board') && !dragState) renderRoute();
+      // 検査は案件一覧に依存（選択セレクタ・案件情報）するため案件更新時も再描画
+      const refreshOn = ['orders', 'board', 'inspection'];
+      if (refreshOn.includes(state.route.name) && !dragState) renderRoute();
       updateBadges();
     },
     (err) => { state.loading = false; state.authError = true; renderRoute(); }
@@ -148,7 +157,7 @@ function renderRoute() {
     case 'case': renderDetail(view, param); break;
     case 'board': renderBoard(view); break;
     case 'parts': renderParts(view); break;
-    case 'inspection': renderPlaceholder(view, '検査', '段階3で実装します。', '✓'); break;
+    case 'inspection': renderInspection(view, param); break;
     case 'docs': renderPlaceholder(view, '図面・仕様書', '段階4で実装します。', '📐'); break;
     case 'settings': renderPlaceholder(view, '設定', '準備中です。', '⚙'); break;
     default: renderOrders(view);
@@ -1534,6 +1543,345 @@ function openPartForm(existing) {
 
   document.body.appendChild(modal);
   form.querySelector('input:not([disabled])')?.focus();
+}
+
+// ============================================================
+// 検査（画面8: 案件ごとの検査項目テーブル / モバイルカード）
+// ============================================================
+function todayISO() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function renderInspection(view, caseId) {
+  setMobileHeader(`
+    <div>
+      <div class="m-title">検査</div>
+      <div class="m-sub">自主検査記録</div>
+    </div>
+  `);
+  document.getElementById('fab').style.display = 'none';
+
+  if (state.loading) { view.replaceChildren(loadingEl()); return; }
+  if (!state.casesRaw.length) {
+    view.replaceChildren(h(`<div class="container"><h2>検査</h2><div class="blueprint placeholder-page">${CORNERS}<div style="font-size:40px;opacity:.5">✓</div><div style="margin-top:10px">案件がありません。先に案件を登録してください。</div></div></div>`));
+    return;
+  }
+
+  const casesById = Object.fromEntries(state.casesRaw.map((c) => [c.id, c]));
+  const selId = (caseId && casesById[caseId]) ? caseId : state.casesRaw[0].id;
+  state.inspCaseId = selId;
+  state.inspLoading = true;
+  state.inspRaw = [];
+
+  view.replaceChildren(loadingEl());
+
+  // このビューにいる間だけ購読（案件と同じリアルタイム同期）
+  unsubView = subscribeInspections(
+    selId,
+    (rows) => { if (state.inspCaseId !== selId) return; state.inspRaw = rows; state.inspLoading = false; paintInspection(view); },
+    () => { state.authError = true; renderRoute(); }
+  );
+
+  // 標準の検査項目を案件ごと初回のみ自動投入
+  if (!inspSeedTried.has(selId)) {
+    inspSeedTried.add(selId);
+    seedInspectionsIfEmpty(selId)
+      .then((seeded) => { if (seeded) toast('標準の検査項目を追加しました'); })
+      .catch(() => {});
+  }
+}
+
+function paintInspection(view) {
+  if (state.inspLoading) { view.replaceChildren(loadingEl()); return; }
+  const c = state.casesRaw.find((x) => x.id === state.inspCaseId);
+  if (!c) { view.replaceChildren(loadingEl()); return; }
+  const cd = decorateCase(c);
+
+  const rows = state.inspRaw;
+  const total = rows.length;
+  const pass = rows.filter((r) => r.judge === '合格').length;
+  const pending = rows.filter((r) => r.judge === '未判定').length;
+
+  const caseOptions = state.casesRaw
+    .map((cc) => `<option value="${esc(cc.id)}" ${cc.id === state.inspCaseId ? 'selected' : ''}>${esc(cc.mgmtNo)} ${esc(cc.type)}</option>`).join('');
+
+  const el = h(`
+    <div class="container">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">Inspection</div>
+          <h2>検査</h2>
+          <div class="detail-meta">${esc(cd.mgmtNo)} ・ ${esc(cd.type)} ・ ${esc(cd.customer || '—')}</div>
+        </div>
+        <div class="kpis">
+          <div class="kpi"><div class="v">${pass} / ${total}</div><div class="l">合格 / 全項目</div></div>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <select class="select" id="insp-case" style="max-width:280px" title="案件を選択">${caseOptions}</select>
+        <button class="btn btn-primary push" id="insp-add">＋ 項目を追加</button>
+      </div>
+
+      <!-- PC: データテーブル -->
+      <div class="blueprint table-wrap">
+        ${CORNERS}
+        <table class="table">
+          <thead><tr>
+            <th style="width:40px">#</th>
+            <th>検査項目</th>
+            <th style="width:132px">判定</th>
+            <th style="width:96px">検査日</th>
+            <th style="width:88px">検査員</th>
+            <th>是正メモ</th>
+            <th style="width:74px"></th>
+          </tr></thead>
+          <tbody id="insp-rows"></tbody>
+        </table>
+      </div>
+
+      <!-- モバイル: カードリスト -->
+      <div class="cardlist" id="insp-cards"></div>
+
+      <!-- フッター: 未判定件数・PDF出力 -->
+      <div class="insp-foot">
+        <span class="text-muted">未判定 <b class="mono" style="color:var(--color-accent-800)">${pending}</b> 件 ／ 全 ${total} 項目</span>
+        <button class="btn btn-secondary push" id="insp-pdf" ${total ? '' : 'disabled'}>検査記録をPDF出力</button>
+      </div>
+    </div>
+  `);
+
+  el.querySelector('#insp-case').addEventListener('change', (e) => go('#/inspection/' + encodeURIComponent(e.target.value)));
+  el.querySelector('#insp-add').addEventListener('click', () => openInspectionForm(null));
+  el.querySelector('#insp-pdf').addEventListener('click', () => exportInspectionPDF(cd, state.inspRaw));
+
+  view.replaceChildren(el);
+  fillInspectionRows();
+}
+
+function fillInspectionRows() {
+  const rows = state.inspRaw;
+  const tbody = document.getElementById('insp-rows');
+  const cards = document.getElementById('insp-cards');
+  if (!tbody || !cards) return;
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty">検査項目がありません。「＋ 項目を追加」で登録できます。</div></td></tr>`;
+    cards.innerHTML = `<div class="empty">検査項目がありません</div>`;
+    return;
+  }
+  tbody.replaceChildren(...rows.map((r, i) => inspTableRow(r, i)));
+  cards.replaceChildren(...rows.map((r, i) => inspCard(r, i)));
+}
+
+// タップで判定を切り替えるタグ（合格/要調整/不合格/未判定）
+function judgeTag(r) {
+  const b = h(`<button class="tag ${judgeClass(r.judge)} insp-judge" title="タップで判定を切替（合格→要調整→不合格→未判定）">${esc(r.judge)}</button>`);
+  b.onclick = () => cycleJudge(r);
+  return b;
+}
+
+async function cycleJudge(r) {
+  const nj = nextJudge(r.judge);
+  const patch = { judge: nj };
+  // 未判定 → 判定 で検査日が空なら本日を自動補完
+  if (nj !== '未判定' && !r.date) patch.date = todayISO();
+  try {
+    await updateInspection(state.inspCaseId, r.id, patch);
+  } catch (err) {
+    toast('判定の更新に失敗しました：' + (err.message || err), 'err');
+  }
+}
+
+function inspTableRow(r, i) {
+  const tr = h(`
+    <tr>
+      <td class="mono text-muted" style="font-size:12px">${i + 1}</td>
+      <td style="font-family:var(--font-heading);font-size:15px">${esc(r.item)}</td>
+      <td class="insp-judge-cell"></td>
+      <td class="mono" style="font-size:12px">${dueShort(r.date)}</td>
+      <td style="font-size:13px">${esc(r.inspector || '—')}</td>
+      <td class="text-muted" style="font-size:12px">${esc(r.note || '')}</td>
+      <td>
+        <div class="row-act" data-stop>
+          <button class="btn btn-secondary" data-edit title="編集">✎</button>
+          <button class="btn btn-secondary" data-del title="削除">🗑</button>
+        </div>
+      </td>
+    </tr>
+  `);
+  tr.querySelector('.insp-judge-cell').appendChild(judgeTag(r));
+  tr.querySelector('[data-edit]').onclick = () => openInspectionForm(r);
+  tr.querySelector('[data-del]').onclick = () => confirmDeleteInspection(r);
+  return tr;
+}
+
+function inspCard(r, i) {
+  const card = h(`
+    <div class="card blueprint">
+      ${CORNERS}
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <span class="mono text-muted" style="font-size:12px">#${i + 1}</span>
+        <span class="insp-judge-slot"></span>
+      </div>
+      <div style="font-family:var(--font-heading);font-size:16px;line-height:1.2">${esc(r.item)}</div>
+      <div style="height:1px;background:var(--color-divider)"></div>
+      <div class="part-grid">
+        <div><span class="k">検査日</span><span class="v mono">${dueShort(r.date)}</span></div>
+        <div><span class="k">検査員</span><span class="v">${esc(r.inspector || '—')}</span></div>
+      </div>
+      ${r.note ? `<div style="font-size:12px"><span class="k" style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-muted)">是正メモ</span><div>${esc(r.note)}</div></div>` : ''}
+      <div style="display:flex;gap:8px;margin-top:2px">
+        <button class="btn btn-secondary btn-sm" style="flex:1" data-edit>編集</button>
+        <button class="btn btn-secondary btn-sm" data-del>削除</button>
+      </div>
+    </div>
+  `);
+  card.querySelector('.insp-judge-slot').appendChild(judgeTag(r));
+  card.querySelector('[data-edit]').onclick = () => openInspectionForm(r);
+  card.querySelector('[data-del]').onclick = () => confirmDeleteInspection(r);
+  return card;
+}
+
+async function confirmDeleteInspection(r) {
+  if (!confirm(`検査項目「${r.item}」を削除します。よろしいですか？`)) return;
+  try {
+    await deleteInspection(state.inspCaseId, r.id);
+    toast('検査項目を削除しました');
+  } catch (err) { toast('削除に失敗しました：' + (err.message || err), 'err'); }
+}
+
+// ---- 検査項目の登録 / 編集フォーム ----
+function openInspectionForm(existing) {
+  const isEdit = !!existing;
+  const d = existing || { item: '', judge: '未判定', date: '', inspector: '', note: '' };
+
+  const modal = h(`
+    <div class="modal-backdrop">
+      <div class="modal blueprint">
+        ${CORNERS}
+        <div class="modal-head">
+          <h3>${isEdit ? '検査項目を編集' : '検査項目を追加'}</h3>
+          <button class="x" title="閉じる">✕</button>
+        </div>
+        <form class="modal-body" id="iform">
+          <div class="form-grid">
+            <div class="field full">
+              <label>検査項目 <span style="color:var(--color-accent)">*</span></label>
+              <input class="input" name="item" value="${esc(d.item)}" required placeholder="ポンプ性能・放水試験">
+            </div>
+            <div class="field">
+              <label>判定</label>
+              <select class="select" name="judge">
+                ${JUDGES.map((j) => `<option ${j === d.judge ? 'selected' : ''}>${esc(j)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field">
+              <label>検査日</label>
+              <input class="input" type="date" name="date" value="${esc(d.date)}">
+            </div>
+            <div class="field">
+              <label>検査員</label>
+              <input class="input" name="inspector" value="${esc(d.inspector)}" placeholder="高橋">
+            </div>
+            <div class="field full">
+              <label>是正メモ</label>
+              <textarea class="input" name="note" placeholder="要調整・不合格の内容や是正指示など">${esc(d.note || '')}</textarea>
+            </div>
+          </div>
+        </form>
+        <div class="modal-foot">
+          <button class="btn btn-secondary" id="i-cancel">キャンセル</button>
+          <button class="btn btn-primary" id="i-save">${isEdit ? '保存' : '追加'}</button>
+        </div>
+      </div>
+    </div>
+  `);
+
+  const close = () => modal.remove();
+  const form = modal.querySelector('#iform');
+  modal.querySelector('.x').onclick = close;
+  modal.querySelector('#i-cancel').onclick = close;
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+  modal.querySelector('#i-save').onclick = async () => {
+    if (!form.reportValidity()) return;
+    const data = {
+      item: form.item.value,
+      judge: form.judge.value,
+      date: form.date.value,
+      inspector: form.inspector.value,
+      note: form.note.value,
+    };
+    const saveBtn = modal.querySelector('#i-save');
+    saveBtn.disabled = true; saveBtn.textContent = '保存中…';
+    try {
+      if (isEdit) {
+        await updateInspection(state.inspCaseId, existing.id, data);
+        toast('検査項目を保存しました');
+      } else {
+        const maxOrder = state.inspRaw.reduce((m, r) => Math.max(m, Number(r.order) || 0), -1);
+        await addInspection(state.inspCaseId, data, maxOrder + 1);
+        toast('検査項目を追加しました');
+      }
+      close();
+    } catch (err) {
+      toast(err.message || '保存に失敗しました', 'err');
+      saveBtn.disabled = false; saveBtn.textContent = isEdit ? '保存' : '追加';
+    }
+  };
+
+  document.body.appendChild(modal);
+  form.querySelector('input:not([disabled])')?.focus();
+}
+
+// ---- 検査記録をPDF出力（ブラウザの印刷→PDF保存を利用・日本語も安全） ----
+function exportInspectionPDF(cd, rows) {
+  const total = rows.length;
+  const pass = rows.filter((r) => r.judge === '合格').length;
+  const pending = rows.filter((r) => r.judge === '未判定').length;
+
+  const report = h(`
+    <div id="print-report">
+      <div class="pr-head">
+        <div class="pr-title">検査記録</div>
+        <div class="pr-sub">${esc(cd.mgmtNo)} ・ ${esc(cd.type)}</div>
+        <div class="pr-meta">顧客 ${esc(cd.customer || '—')} ／ シャシ ${esc(cd.chassis || '—')} ／ 担当 ${esc(cd.staff || '—')}</div>
+        <div class="pr-meta">合格 ${pass} / ${total}　未判定 ${pending}件　出力日 ${todayLabel()}</div>
+      </div>
+      <table class="pr-table">
+        <thead><tr><th style="width:32px">#</th><th>検査項目</th><th style="width:64px">判定</th><th style="width:80px">検査日</th><th style="width:70px">検査員</th><th>是正メモ</th></tr></thead>
+        <tbody>
+          ${rows.map((r, i) => `<tr>
+            <td>${i + 1}</td>
+            <td>${esc(r.item)}</td>
+            <td>${esc(r.judge)}</td>
+            <td>${esc(dueShort(r.date))}</td>
+            <td>${esc(r.inspector || '')}</td>
+            <td>${esc(r.note || '')}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <div class="pr-foot">消防車両 製作管理 ・ 自主検査記録</div>
+    </div>
+  `);
+  document.body.appendChild(report);
+
+  // 印刷ダイアログのファイル名候補にするためタイトルを一時変更
+  const prevTitle = document.title;
+  document.title = `検査記録_${cd.mgmtNo}`;
+
+  const cleanup = () => {
+    report.remove();
+    document.title = prevTitle;
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup);
+  // 印刷を起動（ユーザーが「PDFに保存」を選べる）
+  window.print();
+  // afterprint が発火しない環境向けのフォールバック
+  setTimeout(cleanup, 60000);
 }
 
 // ============================================================

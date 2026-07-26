@@ -39,6 +39,25 @@ export function decoratePart(p) {
   };
 }
 
+// 検査（段階3）
+export const JUDGES = ['合格', '要調整', '不合格', '未判定'];
+
+// 判定 → タグ配色（READMEの指定どおり）
+const JUDGE_CLASS = {
+  '合格': 'tag-neutral',
+  '要調整': 'tag-outline',
+  '不合格': 'tag-accent',
+  '未判定': 'tag-outline',
+};
+export function judgeClass(j) { return JUDGE_CLASS[j] || 'tag-outline'; }
+
+// タップ時の巡回順：未判定 → 合格 → 要調整 → 不合格 → 未判定
+const JUDGE_CYCLE = ['未判定', '合格', '要調整', '不合格'];
+export function nextJudge(j) {
+  const i = JUDGE_CYCLE.indexOf(j);
+  return JUDGE_CYCLE[(i + 1) % JUDGE_CYCLE.length];
+}
+
 // 状態 → 進捗ライン色
 export function barColor(status) {
   if (status === '遅延') return '#a52a21';

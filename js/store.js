@@ -9,7 +9,7 @@ import {
   getDocs, getDoc, onSnapshot, query, orderBy, serverTimestamp, writeBatch,
   storageRef, uploadBytes, getDownloadURL, deleteObject,
 } from './firebase.js';
-import { STAGES, PART_KINDS, PART_STATUSES } from './util.js';
+import { STAGES, PART_KINDS, PART_STATUSES, JUDGES } from './util.js';
 import { resizeImage } from './image.js';
 
 const CASES = 'cases';
@@ -268,6 +268,93 @@ const SEED_PARTS = [
   { kind: '部品', name: 'サイレンアンプ', model: 'SA-60', caseId: 'FE-2468', need: 1, stock: 0, supplier: '大阪サイレン', price: 56000, eta: '08/12', status: '発注済' },
   { kind: '資材', name: 'ステンレスボルトセット', model: 'SUS304 M8', caseId: '共通', need: 200, stock: 640, supplier: '中央鋼材', price: 42, eta: '在庫', status: '入荷済' },
 ];
+
+// ---- 検査（段階3・cases/{caseId}/inspections サブコレクション） --
+// inspection ドキュメント：{ item, judge, date, inspector, note, order, createdAt, updatedAt }
+
+export function subscribeInspections(caseId, cb, onError) {
+  let unsub = () => {};
+  ready.then(() => {
+    const q = query(collection(db, CASES, caseId, 'inspections'), orderBy('order', 'asc'));
+    unsub = onSnapshot(q, (snap) => {
+      cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }, (err) => {
+      console.error('検査購読エラー:', err);
+      onError && onError(err);
+    });
+  }).catch((err) => onError && onError(err));
+  return () => unsub();
+}
+
+export async function addInspection(caseId, data, order) {
+  await ready;
+  const created = await addDoc(collection(db, CASES, caseId, 'inspections'), {
+    ...normalizeInspection(data),
+    order: Number.isFinite(order) ? order : Date.now(),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return created.id;
+}
+
+export async function updateInspection(caseId, id, partial) {
+  await ready;
+  const clean = {};
+  // 判定タップ等の部分更新にも対応（渡された項目だけ正規化して更新）
+  if ('item' in partial) clean.item = (partial.item ?? '').trim();
+  if ('judge' in partial) clean.judge = JUDGES.includes(partial.judge) ? partial.judge : '未判定';
+  if ('date' in partial) clean.date = (partial.date ?? '').trim();
+  if ('inspector' in partial) clean.inspector = (partial.inspector ?? '').trim();
+  if ('note' in partial) clean.note = (partial.note ?? '').trim();
+  if ('order' in partial && Number.isFinite(partial.order)) clean.order = partial.order;
+  await updateDoc(doc(db, CASES, caseId, 'inspections', id), { ...clean, updatedAt: serverTimestamp() });
+}
+
+export async function deleteInspection(caseId, id) {
+  await ready;
+  await deleteDoc(doc(db, CASES, caseId, 'inspections', id));
+}
+
+function normalizeInspection(d) {
+  return {
+    item: (d.item ?? '').trim(),
+    judge: JUDGES.includes(d.judge) ? d.judge : '未判定',
+    date: (d.date ?? '').trim(),
+    inspector: (d.inspector ?? '').trim(),
+    note: (d.note ?? '').trim(),
+  };
+}
+
+// 標準の検査項目（初回のみ自動投入）
+const STANDARD_INSPECTIONS = [
+  'ポンプ性能・放水試験',
+  '真空性能試験',
+  '電装・配線',
+  '灯火・保安基準',
+  '寸法・全幅全高',
+  '車両総重量',
+  '外観・塗装',
+];
+
+// 案件の検査項目が未登録なら標準チェックリストを投入（全項目 未判定）
+export async function seedInspectionsIfEmpty(caseId) {
+  await ready;
+  const col = collection(db, CASES, caseId, 'inspections');
+  const snap = await getDocs(col);
+  if (!snap.empty) return false;
+
+  const batch = writeBatch(db);
+  STANDARD_INSPECTIONS.forEach((item, i) => {
+    batch.set(doc(col), {
+      item, judge: '未判定', date: '', inspector: '', note: '',
+      order: i,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  });
+  await batch.commit();
+  return true;
+}
 
 // ---- シード（初回のみ・サンプル7件を投入） ----------------
 
