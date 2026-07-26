@@ -28,6 +28,7 @@ const state = {
   authError: false,
   search: '',
   sort: 'due',            // 'due' | 'progress'
+  ordersView: 'list',     // 'list' | 'card'（PCの表示切替）
   // 部品・資材
   partsRaw: [],
   partsLoading: true,
@@ -223,7 +224,7 @@ function renderOrders(view) {
   const kpis = kpiData(state.casesRaw.map((c) => decorateCase(c)));
 
   const el = h(`
-    <div class="container">
+    <div class="container orders${state.ordersView === 'card' ? ' view-card' : ''}">
       <div class="page-head">
         <div>
           <div class="eyebrow">Production Orders</div>
@@ -236,9 +237,9 @@ function renderOrders(view) {
 
       <div class="toolbar">
         <div class="seg pc-only">
-          <label class="seg-opt"><input type="radio" name="view" checked>一覧</label>
-          <label class="seg-opt"><input type="radio" name="view" disabled>カード</label>
-          <label class="seg-opt"><input type="radio" name="view" onchange="location.hash='#/board'">工程</label>
+          <label class="seg-opt"><input type="radio" name="view" data-view="list" ${state.ordersView === 'list' ? 'checked' : ''}>一覧</label>
+          <label class="seg-opt"><input type="radio" name="view" data-view="card" ${state.ordersView === 'card' ? 'checked' : ''}>カード</label>
+          <label class="seg-opt"><input type="radio" name="view" data-view="board">工程</label>
         </div>
         <input class="input" id="search" style="max-width:260px" placeholder="管理No・顧客で検索" value="${esc(state.search)}">
         <div class="seg m-only">
@@ -290,6 +291,13 @@ function renderOrders(view) {
   el.querySelector('#new-case').addEventListener('click', () => openCaseForm(null));
   el.querySelectorAll('[data-sort]').forEach((r) => r.addEventListener('change', (e) => {
     state.sort = e.target.dataset.sort; refreshOrderRows();
+  }));
+  // 表示切替（一覧 / カード / 工程）
+  el.querySelectorAll('[data-view]').forEach((r) => r.addEventListener('change', (e) => {
+    const v = e.target.dataset.view;
+    if (v === 'board') { location.hash = '#/board'; return; }
+    state.ordersView = v;                              // 'list' | 'card'
+    el.classList.toggle('view-card', v === 'card');    // CSSで表/カードを切替
   }));
 
   view.replaceChildren(el);

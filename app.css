@@ -989,4 +989,13 @@ textarea.input { resize: vertical; line-height: 1.5; min-height: 54px; }
 
 @media (min-width: 861px) {
   .detail-mobile { display: none; }
+
+  /* 案件一覧のカード表示（PC）：表を隠し、モバイル同様のカードをグリッドで並べる */
+  .orders.view-card .table-wrap { display: none; }
+  .orders.view-card .legend { display: none; }
+  .orders.view-card .cardlist {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
 }
