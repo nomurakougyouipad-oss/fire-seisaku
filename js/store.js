@@ -9,7 +9,7 @@ import {
   getDocs, getDoc, onSnapshot, query, orderBy, serverTimestamp, writeBatch,
   storageRef, uploadBytes, getDownloadURL, deleteObject,
 } from './firebase.js';
-import { STAGES, PART_KINDS, PART_STATUSES, JUDGES } from './util.js';
+import { STAGES, PART_KINDS, PART_STATUSES, JUDGES, DOC_GROUPS } from './util.js';
 import { resizeImage } from './image.js';
 
 const CASES = 'cases';
@@ -354,6 +354,73 @@ export async function seedInspectionsIfEmpty(caseId) {
   });
   await batch.commit();
   return true;
+}
+
+// ---- 図面・仕様書・書類（段階4・cases/{caseId}/documents サブコレクション） --
+// document ドキュメント：{ group, name, ext, size, rev, date, url, path, contentType, createdAt }
+// 実体は Storage の cases/{caseId}/docs/ に保存（写真と同じ仕組み・全端末同期）
+
+function ymd(d = new Date()) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+export function subscribeDocuments(caseId, cb, onError) {
+  let unsub = () => {};
+  ready.then(() => {
+    const q = query(collection(db, CASES, caseId, 'documents'), orderBy('createdAt', 'asc'));
+    unsub = onSnapshot(q, (snap) => {
+      cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }, (err) => { console.error('図面購読エラー:', err); onError && onError(err); });
+  }).catch((err) => onError && onError(err));
+  return () => unsub();
+}
+
+// ファイルを Storage にアップロード → メタを Firestore に保存
+export async function uploadDocument(caseId, file, { group, rev } = {}, { onStage } = {}) {
+  await ready;
+  if (onStage) onStage('upload');
+  const rand = Math.random().toString(36).slice(2, 8);
+  const safe = (file.name || 'file').replace(/[^\w.\-]+/g, '_');
+  const path = `cases/${caseId}/docs/${Date.now()}_${rand}_${safe}`;
+  const sref = storageRef(storage, path);
+  await uploadBytes(sref, file, { contentType: file.type || 'application/octet-stream' });
+  const url = await getDownloadURL(sref);
+
+  if (onStage) onStage('save');
+  const ext = ((file.name || '').split('.').pop() || '').toUpperCase().slice(0, 5);
+  const created = await addDoc(collection(db, CASES, caseId, 'documents'), {
+    group: DOC_GROUPS.includes(group) ? group : DOC_GROUPS[0],
+    name: file.name || 'file',
+    ext,
+    size: file.size || 0,
+    rev: (rev || '').trim(),
+    date: ymd(),
+    url,
+    path,
+    contentType: file.type || '',
+    createdAt: serverTimestamp(),
+  });
+  return { id: created.id, url, path };
+}
+
+// 図面メタの一部を更新（種別・Rev の変更など）
+export async function updateDocument(caseId, id, partial) {
+  await ready;
+  const clean = {};
+  if ('group' in partial) clean.group = DOC_GROUPS.includes(partial.group) ? partial.group : DOC_GROUPS[0];
+  if ('name' in partial) clean.name = (partial.name ?? '').trim();
+  if ('rev' in partial) clean.rev = (partial.rev ?? '').trim();
+  await updateDoc(doc(db, CASES, caseId, 'documents', id), clean);
+}
+
+// 図面を削除（Firestoreメタ + Storage実体）
+export async function removeDocument(caseId, docu) {
+  await ready;
+  await deleteDoc(doc(db, CASES, caseId, 'documents', docu.id));
+  if (docu.path) {
+    try { await deleteObject(storageRef(storage, docu.path)); }
+    catch (err) { console.warn('Storageの図面削除に失敗（メタは削除済み）:', err); }
+  }
 }
 
 // ---- シード（初回のみ・サンプル7件を投入） ----------------

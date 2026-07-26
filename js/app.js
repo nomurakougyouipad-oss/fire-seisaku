@@ -6,6 +6,7 @@
 
 import {
   STAGES, STATUSES, PART_KINDS, PART_STATUSES, JUDGES, judgeClass, nextJudge,
+  DOC_GROUPS, fmtBytes, fmtDate, extKind, previewKind,
   yen, pct, autoProgress, decorateCase, decoratePart, esc, h, toast, CORNERS,
   stepperHTML, todayLabel, dueShort, clamp,
 } from './util.js';
@@ -15,6 +16,7 @@ import {
   uploadStagePhoto, updatePhoto, removePhoto,
   subscribeParts, createPart, updatePart, deletePart, seedPartsIfEmpty,
   subscribeInspections, addInspection, updateInspection, deleteInspection, seedInspectionsIfEmpty,
+  subscribeDocuments, uploadDocument, updateDocument, removeDocument,
 } from './store.js';
 import { ready } from './firebase.js';
 
@@ -36,6 +38,10 @@ const state = {
   inspRaw: [],
   inspLoading: true,
   inspCaseId: null,
+  // 図面・仕様書
+  docsRaw: [],
+  docsLoading: true,
+  docsCaseId: null,
 };
 
 let unsubView = null;      // 現在ビューの購読解除
@@ -57,8 +63,8 @@ async function boot() {
     (rows) => {
       state.casesRaw = rows; state.loading = false;
       // ドラッグ操作中は再描画を抑止（ドロップ確定後の更新で反映される）
-      // 検査は案件一覧に依存（選択セレクタ・案件情報）するため案件更新時も再描画
-      const refreshOn = ['orders', 'board', 'inspection'];
+      // 検査・図面は案件情報に依存するため案件更新時も再描画
+      const refreshOn = ['orders', 'board', 'inspection', 'docs'];
       if (refreshOn.includes(state.route.name) && !dragState) renderRoute();
       updateBadges();
     },
@@ -158,7 +164,7 @@ function renderRoute() {
     case 'board': renderBoard(view); break;
     case 'parts': renderParts(view); break;
     case 'inspection': renderInspection(view, param); break;
-    case 'docs': renderPlaceholder(view, '図面・仕様書', '段階4で実装します。', '📐'); break;
+    case 'docs': renderDocs(view, param); break;
     case 'settings': renderPlaceholder(view, '設定', '準備中です。', '⚙'); break;
     default: renderOrders(view);
   }
@@ -688,7 +694,8 @@ function detailDesktop(c) {
             <span class="mono" style="font-size:13px">${c.dueShort}（${c.dueLabel}）</span>
           </div>
           <div class="progressbar" style="margin-top:6px;--bar:${c.barColor}"><span style="width:${clamp(c.progress,0,100)}%"></span></div>
-          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap">
+            <a class="btn btn-secondary btn-sm" href="#/docs/${encodeURIComponent(c.id)}">📐 図面・仕様書</a>
             <button class="btn btn-secondary btn-sm" id="d-edit">✎ 編集</button>
             <button class="btn btn-secondary btn-sm" id="d-del">削除</button>
             <button class="btn btn-primary btn-sm" id="d-advance" ${c.stageIndex >= STAGES.length - 1 ? 'disabled' : ''}>次の工程へ進める →</button>
@@ -1882,6 +1889,256 @@ function exportInspectionPDF(cd, rows) {
   window.print();
   // afterprint が発火しない環境向けのフォールバック
   setTimeout(cleanup, 60000);
+}
+
+// ============================================================
+// 図面・仕様書ビューア（画面6: 案件ごとのファイル一覧 / プレビュー）
+// ============================================================
+function renderDocs(view, caseId) {
+  const c = state.casesRaw.find((x) => x.id === caseId);
+  setMobileHeader(`
+    <button class="m-back" id="m-back">‹</button>
+    <div style="flex:1">
+      <div class="m-title" style="font-size:18px">図面・仕様書</div>
+      <div class="m-sub">${c ? esc(c.mgmtNo) + ' ・ ' + esc(c.type) : ''}</div>
+    </div>
+  `);
+  document.getElementById('fab').style.display = 'none';
+
+  if (state.loading) { view.replaceChildren(loadingEl()); return; }
+  if (!caseId || !c) { view.replaceChildren(notFoundEl()); return; }
+
+  state.docsCaseId = caseId;
+  state.docsLoading = true;
+  state.docsRaw = [];
+  view.replaceChildren(loadingEl());
+
+  // このビューにいる間だけ購読（写真と同じリアルタイム同期）
+  unsubView = subscribeDocuments(
+    caseId,
+    (rows) => { if (state.docsCaseId !== caseId) return; state.docsRaw = rows; state.docsLoading = false; paintDocs(view); },
+    () => { state.authError = true; renderRoute(); }
+  );
+
+  const back = document.getElementById('m-back');
+  if (back) back.onclick = () => go('#/case/' + encodeURIComponent(caseId));
+}
+
+function paintDocs(view) {
+  if (state.docsLoading) { view.replaceChildren(loadingEl()); return; }
+  const c = state.casesRaw.find((x) => x.id === state.docsCaseId);
+  const cd = c ? decorateCase(c) : null;
+  const docs = state.docsRaw;
+
+  const el = h(`
+    <div class="container">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">Drawings &amp; Documents</div>
+          <h2>図面・仕様書</h2>
+          <div class="detail-meta">${cd ? esc(cd.mgmtNo) + ' ・ ' + esc(cd.type) + ' ・ ' + esc(cd.customer || '—') : ''}</div>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <a class="btn btn-secondary pc-only" href="#/case/${encodeURIComponent(state.docsCaseId)}">‹ 案件詳細へ</a>
+        <button class="btn btn-primary push" id="doc-add">＋ ファイルを追加</button>
+      </div>
+
+      <div id="doc-sections"></div>
+    </div>
+  `);
+  el.querySelector('#doc-add').onclick = () => openDocUploadForm(state.docsCaseId);
+
+  const sections = el.querySelector('#doc-sections');
+  if (!docs.length) {
+    sections.appendChild(h(`
+      <div class="blueprint placeholder-page">
+        ${CORNERS}
+        <div style="font-size:40px;opacity:.5">📐</div>
+        <div style="margin-top:10px">まだファイルがありません。<br>「＋ ファイルを追加」で図面・仕様書・書類をアップロードできます。</div>
+      </div>
+    `));
+  } else {
+    DOC_GROUPS.forEach((g) => {
+      const items = docs.filter((d) => (DOC_GROUPS.includes(d.group) ? d.group : DOC_GROUPS[0]) === g);
+      if (items.length) sections.appendChild(docSection(g, items));
+    });
+  }
+
+  view.replaceChildren(el);
+}
+
+function docSection(title, items) {
+  const sec = h(`
+    <div class="doc-section">
+      <div class="doc-section-title">${esc(title)}</div>
+      <div class="doc-list"></div>
+    </div>
+  `);
+  const list = sec.querySelector('.doc-list');
+  items.forEach((d) => list.appendChild(docRow(d)));
+  return sec;
+}
+
+function docRow(d) {
+  const kind = extKind(d.ext);
+  const label = (d.ext || '').slice(0, 4).toUpperCase() || 'FILE';
+  const meta = [d.rev, fmtBytes(d.size), fmtDate(d.date)].filter(Boolean).join(' ・ ');
+  const row = h(`
+    <div class="blueprint doc-row">
+      ${CORNERS}
+      <button class="doc-open" title="開く">
+        <span class="doc-tile ${kind}">${esc(label)}</span>
+        <span class="doc-info">
+          <span class="doc-name">${esc(d.name)}</span>
+          <span class="doc-meta mono">${esc(meta)}</span>
+        </span>
+        <span class="doc-chev">›</span>
+      </button>
+      <button class="doc-del" title="削除">🗑</button>
+    </div>
+  `);
+  row.querySelector('.doc-open').onclick = () => openDocPreview(d);
+  row.querySelector('.doc-del').onclick = () => confirmDeleteDocument(d);
+  return row;
+}
+
+// ---- プレビュー（PDFは全画面 / 画像はそのまま / それ以外はDL・共有） ----
+function openDocPreview(d) {
+  const kind = previewKind(d.contentType, d.ext);
+  const ov = h(`
+    <div class="docview">
+      <div class="docview-top">
+        <button class="x" title="閉じる">✕</button>
+        <span class="docview-name">${esc(d.name)}</span>
+        <span class="mono" style="font-size:12px;opacity:.85">${esc((d.ext || '').toUpperCase())}</span>
+      </div>
+      <div class="docview-body"></div>
+      <div class="docview-foot">
+        <button class="btn btn-secondary docview-share" style="flex:1">共有</button>
+        <button class="btn btn-primary docview-dl" style="flex:2">ダウンロード</button>
+      </div>
+    </div>
+  `);
+  const body = ov.querySelector('.docview-body');
+  if (kind === 'image') {
+    body.appendChild(h(`<img class="docview-img" alt="${esc(d.name)}" src="${esc(d.url)}">`));
+  } else if (kind === 'pdf') {
+    body.appendChild(h(`<iframe class="docview-frame" src="${esc(d.url)}" title="${esc(d.name)}"></iframe>`));
+  } else {
+    body.appendChild(h(`
+      <div class="docview-none">
+        <span class="doc-tile ${extKind(d.ext)}" style="width:64px;height:76px;font-size:14px">${esc((d.ext || '').slice(0, 4).toUpperCase() || 'FILE')}</span>
+        <div style="margin-top:16px;font-family:var(--font-heading);font-size:16px">${esc((d.ext || '').toUpperCase() || '不明')} はプレビュー未対応です</div>
+        <div style="opacity:.75;font-size:12px;margin-top:6px">下のボタンからダウンロード / 共有できます。</div>
+      </div>
+    `));
+  }
+  const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); };
+  function onKey(e) { if (e.key === 'Escape') close(); }
+  ov.querySelector('.x').onclick = close;
+  ov.querySelector('.docview-dl').onclick = () => downloadDoc(d);
+  ov.querySelector('.docview-share').onclick = () => shareDoc(d);
+  document.addEventListener('keydown', onKey);
+  document.body.appendChild(ov);
+}
+
+function downloadDoc(d) {
+  const a = document.createElement('a');
+  a.href = d.url; a.target = '_blank'; a.rel = 'noopener';
+  a.download = d.name || '';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+async function shareDoc(d) {
+  if (navigator.share) {
+    try { await navigator.share({ title: d.name, url: d.url }); }
+    catch (_) { /* キャンセル等は無視 */ }
+  } else {
+    downloadDoc(d); // 共有API非対応環境はダウンロードにフォールバック
+  }
+}
+
+async function confirmDeleteDocument(d) {
+  if (!confirm(`「${d.name}」を削除します。よろしいですか？`)) return;
+  try {
+    await removeDocument(state.docsCaseId, d);
+    toast('ファイルを削除しました');
+  } catch (err) { toast('削除に失敗しました：' + (err.message || err), 'err'); }
+}
+
+// ---- ファイル追加（アップロード）フォーム ----
+function openDocUploadForm(caseId) {
+  const modal = h(`
+    <div class="modal-backdrop">
+      <div class="modal blueprint">
+        ${CORNERS}
+        <div class="modal-head">
+          <h3>ファイルを追加</h3>
+          <button class="x" title="閉じる">✕</button>
+        </div>
+        <form class="modal-body" id="dform">
+          <div class="form-grid">
+            <div class="field full">
+              <label>ファイル <span style="color:var(--color-accent)">*</span></label>
+              <input class="input" type="file" name="file" required>
+              <div class="text-muted mono" id="d-fileinfo" style="font-size:12px"></div>
+            </div>
+            <div class="field">
+              <label>種別</label>
+              <select class="select" name="group">
+                ${DOC_GROUPS.map((g) => `<option>${esc(g)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field">
+              <label>Rev（任意）</label>
+              <input class="input" name="rev" placeholder="Rev.A">
+            </div>
+          </div>
+        </form>
+        <div class="modal-foot">
+          <button class="btn btn-secondary" id="d-cancel">キャンセル</button>
+          <button class="btn btn-primary" id="d-save">アップロード</button>
+        </div>
+      </div>
+    </div>
+  `);
+
+  const close = () => modal.remove();
+  const form = modal.querySelector('#dform');
+  modal.querySelector('.x').onclick = close;
+  modal.querySelector('#d-cancel').onclick = close;
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+  form.file.addEventListener('change', () => {
+    const f = form.file.files && form.file.files[0];
+    modal.querySelector('#d-fileinfo').textContent = f ? `${f.name}（${fmtBytes(f.size)}）` : '';
+  });
+
+  modal.querySelector('#d-save').onclick = async () => {
+    if (!form.reportValidity()) return;
+    const file = form.file.files && form.file.files[0];
+    if (!file) { toast('ファイルを選択してください', 'err'); return; }
+    const group = form.group.value;
+    const rev = form.rev.value;
+    const saveBtn = modal.querySelector('#d-save');
+    saveBtn.disabled = true; saveBtn.textContent = 'アップロード中…';
+    const step = { upload: 'アップロード中', save: '保存中' };
+    showUpload('アップロード中…');
+    try {
+      await uploadDocument(caseId, file, { group, rev }, { onStage: (s) => showUpload((step[s] || '処理中') + '…') });
+      hideUpload();
+      toast('ファイルを追加しました');
+      close();
+    } catch (err) {
+      hideUpload();
+      toast('アップロードに失敗しました：' + (err.message || err), 'err');
+      saveBtn.disabled = false; saveBtn.textContent = 'アップロード';
+    }
+  };
+
+  document.body.appendChild(modal);
 }
 
 // ============================================================

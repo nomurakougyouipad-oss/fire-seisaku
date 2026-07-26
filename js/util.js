@@ -58,6 +58,46 @@ export function nextJudge(j) {
   return JUDGE_CYCLE[(i + 1) % JUDGE_CYCLE.length];
 }
 
+// 図面・仕様書（段階4）
+export const DOC_GROUPS = ['図面', '仕様書', '見積・書類'];
+
+// バイト数を読みやすい単位に
+export function fmtBytes(n) {
+  n = Number(n) || 0;
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return Math.round(n / 1024) + ' KB';
+  return (n / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+// YYYY-MM-DD → YYYY/MM/DD
+export function fmtDate(iso) {
+  return iso ? String(iso).replace(/-/g, '/') : '—';
+}
+
+// 拡張子 → 種類（バッジ配色・プレビュー判定に使用）
+export function extKind(ext) {
+  const e = String(ext || '').toUpperCase();
+  if (e === 'PDF') return 'pdf';
+  if (['DXF', 'DWG'].includes(e)) return 'cad';
+  if (['XLSX', 'XLS', 'CSV'].includes(e)) return 'sheet';
+  if (['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'HEIC', 'BMP'].includes(e)) return 'img';
+  if (['DOC', 'DOCX'].includes(e)) return 'doc';
+  return 'file';
+}
+
+// プレビュー方式を判定：'image' | 'pdf' | 'none'
+// ブラウザで表示できるラスター画像のみ 'image' 扱い。
+// DXF は image/vnd.dxf 等の contentType を持つことがあるため、拡張子/型を限定する。
+const RASTER_EXT = ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'BMP'];
+const RASTER_CT = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'image/bmp'];
+export function previewKind(contentType, ext) {
+  const ct = String(contentType || '').toLowerCase();
+  const e = String(ext || '').toUpperCase();
+  if (RASTER_EXT.includes(e) || RASTER_CT.includes(ct)) return 'image';
+  if (ct === 'application/pdf' || e === 'PDF') return 'pdf';
+  return 'none';
+}
+
 // 状態 → 進捗ライン色
 export function barColor(status) {
   if (status === '遅延') return '#a52a21';

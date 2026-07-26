@@ -532,6 +532,75 @@ textarea.input { resize: vertical; line-height: 1.5; min-height: 54px; }
 }
 
 /* ============================================================
+   図面・仕様書ビューア
+   ============================================================ */
+#doc-sections { display: flex; flex-direction: column; gap: 20px; }
+.doc-section { display: flex; flex-direction: column; gap: 8px; }
+.doc-section-title {
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.doc-list { display: flex; flex-direction: column; gap: 10px; }
+.doc-row { display: flex; align-items: stretch; }
+.doc-open {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px;
+  background: var(--color-surface); border: none; cursor: pointer;
+  padding: 11px 12px; text-align: left; color: var(--color-text);
+  -webkit-tap-highlight-color: transparent;
+}
+.doc-open:hover { background: var(--color-neutral-100); }
+.doc-open:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.doc-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.doc-name {
+  font-family: var(--font-heading); font-size: 15px; line-height: 1.2;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.doc-meta { font-size: 11px; color: var(--color-text-muted); }
+.doc-chev { font-size: 18px; color: var(--color-text-muted); flex: none; }
+.doc-del {
+  flex: none; width: 44px; border: none; border-left: 1px solid var(--color-divider);
+  background: var(--color-surface); cursor: pointer; font-size: 15px;
+}
+.doc-del:hover { background: var(--color-accent-100); }
+
+/* 種類バッジ（PDF/DXF/XLSX の色付きタイル） */
+.doc-tile {
+  width: 40px; height: 48px; flex: none;
+  display: grid; place-items: center;
+  font-family: var(--font-heading); font-size: 11px; letter-spacing: 0.03em;
+}
+.doc-tile.pdf   { background: var(--color-accent-100); color: var(--color-accent-800); }
+.doc-tile.cad   { background: #e6eef7; color: #285b8c; }
+.doc-tile.sheet { background: #e6f2ea; color: #2f7d4f; }
+.doc-tile.img   { background: #efe9f7; color: #6b46a8; }
+.doc-tile.doc   { background: #eceefb; color: #3a49a8; }
+.doc-tile.file  { background: var(--color-neutral-100); color: var(--color-text-muted); }
+
+/* 全画面プレビュー */
+.docview {
+  position: fixed; inset: 0; z-index: 92;
+  background: #0c0d0e; display: flex; flex-direction: column;
+}
+.docview-top {
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+  display: flex; align-items: center; gap: 12px; color: #fff;
+}
+.docview-top .x { border: none; background: none; color: #fff; font-size: 22px; cursor: pointer; line-height: 1; }
+.docview-name {
+  flex: 1; min-width: 0; font-family: var(--font-heading); font-size: 15px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.docview-body { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 0 12px; }
+.docview-img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.docview-frame { width: 100%; height: 100%; border: 0; background: #fff; }
+.docview-none { color: #fff; text-align: center; padding: 24px; display: flex; flex-direction: column; align-items: center; }
+.docview-foot {
+  padding: 12px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+  display: flex; gap: 8px;
+}
+.docview-foot .docview-share { color: #fff; border-color: rgba(255, 255, 255, 0.4); background: rgba(255, 255, 255, 0.08); }
+
+/* ============================================================
    案件詳細（工程別フォトログ）
    ============================================================ */
 .detail-head {
