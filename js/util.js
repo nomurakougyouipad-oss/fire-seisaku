@@ -7,6 +7,38 @@ export const STAGES = ['設計', '加工', '艤装', '塗装', '電装', '検査
 
 export const STATUSES = ['順調', '要注意', '遅延'];
 
+// 部品・資材（段階3）
+export const PART_KINDS = ['部品', '資材'];
+export const PART_STATUSES = ['未発注', '発注済', '入荷待ち', '入荷済'];
+
+// 発注状況 → タグ配色（READMEの指定どおり）
+const PART_STATUS_CLASS = {
+  '未発注': 'tag-outline',
+  '発注済': 'tag-accent',
+  '入荷待ち': 'tag-outline',
+  '入荷済': 'tag-neutral',
+};
+
+// 部品から派生プロパティを付与（表示用ビューモデル）
+export function decoratePart(p) {
+  const need = Number(p.need) || 0;
+  const stock = Number(p.stock) || 0;
+  const kind = PART_KINDS.includes(p.kind) ? p.kind : '部品';
+  const status = PART_STATUSES.includes(p.status) ? p.status : '未発注';
+  return {
+    ...p,
+    kind,
+    need,
+    stock,
+    status,
+    kindClass: kind === '資材' ? 'tag-neutral' : 'tag-accent',
+    statusClass: PART_STATUS_CLASS[status] || 'tag-outline',
+    low: stock < need,                                   // 在庫が必要数を下回る
+    shortBy: Math.max(0, need - stock),
+    ordering: status === '発注済' || status === '入荷待ち', // 発注中
+  };
+}
+
 // 状態 → 進捗ライン色
 export function barColor(status) {
   if (status === '遅延') return '#a52a21';

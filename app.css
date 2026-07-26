@@ -452,6 +452,24 @@ textarea.input { resize: vertical; line-height: 1.5; min-height: 54px; }
 .cardlist { display: none; flex-direction: column; gap: 12px; }
 
 /* ============================================================
+   部品・資材
+   ============================================================ */
+/* テーブル行内の編集/削除ボタン（コンパクト） */
+.row-act { display: flex; gap: 4px; justify-content: flex-end; }
+.row-act .btn {
+  width: 30px; min-width: 30px; height: 30px; min-height: 30px;
+  padding: 0; font-size: 14px;
+}
+/* モバイルカードの項目グリッド */
+.part-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 16px; }
+.part-grid > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.part-grid .k {
+  font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.part-grid .v { font-size: 14px; }
+
+/* ============================================================
    案件詳細（工程別フォトログ）
    ============================================================ */
 .detail-head {

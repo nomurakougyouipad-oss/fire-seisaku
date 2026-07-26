@@ -5,13 +5,14 @@
 // ============================================================
 
 import {
-  STAGES, STATUSES, yen, pct, autoProgress, decorateCase,
-  esc, h, toast, CORNERS, stepperHTML, todayLabel, clamp,
+  STAGES, STATUSES, PART_KINDS, PART_STATUSES, yen, pct, autoProgress,
+  decorateCase, decoratePart, esc, h, toast, CORNERS, stepperHTML, todayLabel, clamp,
 } from './util.js';
 import {
   subscribeCases, subscribeCase, subscribePhotos,
   createCase, updateCase, patchCase, deleteCase, seedIfEmpty, getCase,
   uploadStagePhoto, updatePhoto, removePhoto,
+  subscribeParts, createPart, updatePart, deletePart, seedPartsIfEmpty,
 } from './store.js';
 import { ready } from './firebase.js';
 
@@ -23,9 +24,16 @@ const state = {
   authError: false,
   search: '',
   sort: 'due',            // 'due' | 'progress'
+  // 部品・資材
+  partsRaw: [],
+  partsLoading: true,
+  partSearch: '',
+  partKind: 'all',        // 'all' | '部品' | '資材'
+  partStatus: 'all',      // 'all' | 未発注 | 発注済 | 入荷待ち | 入荷済
 };
 
 let unsubView = null;      // 現在ビューの購読解除
+let partsSeedTried = false;
 
 const IMG_ICON = `<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 15l-5-5L4 21"/></svg>`;
 
@@ -139,7 +147,7 @@ function renderRoute() {
     case 'orders': renderOrders(view); break;
     case 'case': renderDetail(view, param); break;
     case 'board': renderBoard(view); break;
-    case 'parts': renderPlaceholder(view, '部品・資材', '段階3で実装します。', '◫'); break;
+    case 'parts': renderParts(view); break;
     case 'inspection': renderPlaceholder(view, '検査', '段階3で実装します。', '✓'); break;
     case 'docs': renderPlaceholder(view, '図面・仕様書', '段階4で実装します。', '📐'); break;
     case 'settings': renderPlaceholder(view, '設定', '準備中です。', '⚙'); break;
@@ -1146,6 +1154,327 @@ function suggestMgmtNo() {
     .filter(Boolean).map((m) => Number(m[1]));
   const next = nums.length ? Math.max(...nums) + 1 : 2482;
   return 'FE-' + next;
+}
+
+// ============================================================
+// 部品・資材（画面7: PCテーブル / モバイルカード）
+// ============================================================
+function renderParts(view) {
+  setMobileHeader(`
+    <div>
+      <div class="m-title">部品・資材</div>
+      <div class="m-sub">在庫と発注状況</div>
+    </div>
+    <button class="m-icon" id="m-part-add">＋</button>
+  `);
+  document.getElementById('fab').style.display = 'none';
+  view.replaceChildren(loadingEl());
+
+  // このビューにいる間だけ購読（案件一覧と同じリアルタイム同期）
+  unsubView = subscribeParts(
+    (rows) => { state.partsRaw = rows; state.partsLoading = false; paintParts(view); },
+    () => { state.authError = true; renderRoute(); }
+  );
+
+  // 初回のみサンプル部品を投入
+  if (!partsSeedTried) {
+    partsSeedTried = true;
+    seedPartsIfEmpty()
+      .then((seeded) => { if (seeded) toast('サンプル部品を登録しました'); })
+      .catch(() => {});
+  }
+
+  const mAdd = document.getElementById('m-part-add');
+  if (mAdd) mAdd.onclick = () => openPartForm(null);
+}
+
+function getVisibleParts(all) {
+  let rows = all;
+  const q = state.partSearch.trim().toLowerCase();
+  if (q) {
+    rows = rows.filter((p) =>
+      (p.name || '').toLowerCase().includes(q) ||
+      (p.model || '').toLowerCase().includes(q) ||
+      (p.caseId || '').toLowerCase().includes(q) ||
+      (p.supplier || '').toLowerCase().includes(q));
+  }
+  if (state.partKind !== 'all') rows = rows.filter((p) => p.kind === state.partKind);
+  if (state.partStatus !== 'all') rows = rows.filter((p) => p.status === state.partStatus);
+  return rows;
+}
+
+function paintParts(view) {
+  if (state.partsLoading) { view.replaceChildren(loadingEl()); return; }
+
+  const all = state.partsRaw.map(decoratePart);
+  const kpis = [
+    { value: all.length, label: '登録品目' },
+    { value: all.filter((p) => p.ordering).length, label: '発注中' },
+    { value: all.filter((p) => p.low).length, label: '在庫不足' },
+  ];
+  const rows = getVisibleParts(all);
+
+  const statusOpts = ['all', ...PART_STATUSES]
+    .map((s) => `<option value="${s}" ${state.partStatus === s ? 'selected' : ''}>${s === 'all' ? '発注状況: すべて' : esc(s)}</option>`).join('');
+  const kindOpts = ['all', ...PART_KINDS]
+    .map((k) => `<option value="${k}" ${state.partKind === k ? 'selected' : ''}>${k === 'all' ? '区分: すべて' : esc(k)}</option>`).join('');
+
+  const el = h(`
+    <div class="container">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">Parts &amp; Materials</div>
+          <h2>部品・資材</h2>
+        </div>
+        <div class="kpis">
+          ${kpis.map((k) => `<div class="kpi"><div class="v">${k.value}</div><div class="l">${esc(k.label)}</div></div>`).join('')}
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <input class="input" id="part-search" style="max-width:230px" placeholder="品名・型番・仕入先で検索" value="${esc(state.partSearch)}">
+        <select class="select" id="part-kind" style="max-width:150px">${kindOpts}</select>
+        <select class="select" id="part-status" style="max-width:170px">${statusOpts}</select>
+        <button class="btn btn-primary push" id="part-add">＋ 発注登録</button>
+      </div>
+
+      <!-- PC: データテーブル -->
+      <div class="blueprint table-wrap">
+        ${CORNERS}
+        <table class="table">
+          <thead><tr>
+            <th style="width:82px">区分</th>
+            <th>品名 / 型番</th>
+            <th style="width:112px">使用案件</th>
+            <th style="width:84px;text-align:right">必要数</th>
+            <th style="width:112px;text-align:right">在庫数</th>
+            <th style="width:140px">仕入先</th>
+            <th style="width:104px;text-align:right">単価</th>
+            <th style="width:96px">入荷予定</th>
+            <th style="width:96px">発注状況</th>
+            <th style="width:74px"></th>
+          </tr></thead>
+          <tbody id="part-rows"></tbody>
+        </table>
+      </div>
+
+      <!-- モバイル: カードリスト -->
+      <div class="cardlist" id="part-cards"></div>
+    </div>
+  `);
+
+  el.querySelector('#part-search').addEventListener('input', debounce((e) => {
+    state.partSearch = e.target.value; fillPartRows(view);
+  }, 180));
+  el.querySelector('#part-kind').addEventListener('change', (e) => { state.partKind = e.target.value; fillPartRows(view); });
+  el.querySelector('#part-status').addEventListener('change', (e) => { state.partStatus = e.target.value; fillPartRows(view); });
+  el.querySelector('#part-add').addEventListener('click', () => openPartForm(null));
+
+  view.replaceChildren(el);
+  fillPartRows(view, rows);
+}
+
+function fillPartRows(view, precomputed) {
+  const rows = precomputed || getVisibleParts(state.partsRaw.map(decoratePart));
+  const tbody = document.getElementById('part-rows');
+  const cards = document.getElementById('part-cards');
+  if (!tbody || !cards) return;
+
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10"><div class="empty">該当する品目がありません</div></td></tr>`;
+    cards.innerHTML = `<div class="empty">該当する品目がありません</div>`;
+    return;
+  }
+  tbody.replaceChildren(...rows.map((p) => partTableRow(p)));
+  cards.replaceChildren(...rows.map((p) => partCard(p)));
+}
+
+// 在庫数セル（不足時は赤 + 「不足」バッジ）
+function stockCellHTML(p) {
+  if (p.low) {
+    return `<span class="mono" style="color:var(--color-accent-900);font-weight:600">${p.stock}</span>
+      <span class="tag tag-late" style="margin-left:6px;font-size:10px;padding:0 5px">不足${p.shortBy}</span>`;
+  }
+  return `<span class="mono">${p.stock}</span>`;
+}
+
+function partTableRow(p) {
+  const tr = h(`
+    <tr class="clickable">
+      <td><span class="tag ${p.kindClass}">${esc(p.kind)}</span></td>
+      <td>
+        <div style="font-family:var(--font-heading);font-size:15px;line-height:1.15">${esc(p.name)}</div>
+        <div class="text-muted mono" style="font-size:11px">${esc(p.model || '—')}</div>
+      </td>
+      <td class="mono" style="font-size:12px;color:var(--color-accent-800)">${esc(p.caseId || '—')}</td>
+      <td class="mono right" style="font-size:13px">${p.need}</td>
+      <td class="right" style="font-size:13px">${stockCellHTML(p)}</td>
+      <td style="font-size:13px">${esc(p.supplier || '—')}</td>
+      <td class="mono right" style="font-size:13px">${yen(p.price)}</td>
+      <td class="mono" style="font-size:12px">${esc(p.eta || '—')}</td>
+      <td><span class="tag ${p.statusClass}">${esc(p.status)}</span></td>
+      <td>
+        <div class="row-act" data-stop>
+          <button class="btn btn-secondary" data-edit title="編集">✎</button>
+          <button class="btn btn-secondary" data-del title="削除">🗑</button>
+        </div>
+      </td>
+    </tr>
+  `);
+  tr.addEventListener('click', (e) => { if (e.target.closest('[data-stop]')) return; openPartForm(p); });
+  tr.querySelector('[data-edit]').onclick = () => openPartForm(p);
+  tr.querySelector('[data-del]').onclick = () => confirmDeletePart(p);
+  return tr;
+}
+
+function partCard(p) {
+  const card = h(`
+    <div class="card blueprint">
+      ${CORNERS}
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <span class="tag ${p.kindClass}">${esc(p.kind)}</span>
+        <span class="tag ${p.statusClass}">${esc(p.status)}</span>
+      </div>
+      <div style="font-family:var(--font-heading);font-size:17px;line-height:1.15">${esc(p.name)}</div>
+      <div class="text-muted mono" style="font-size:11px;margin-top:-4px">${esc(p.model || '—')}</div>
+      <div style="height:1px;background:var(--color-divider)"></div>
+      <div class="part-grid">
+        <div><span class="k">使用案件</span><span class="v mono" style="color:var(--color-accent-800)">${esc(p.caseId || '—')}</span></div>
+        <div><span class="k">仕入先</span><span class="v">${esc(p.supplier || '—')}</span></div>
+        <div><span class="k">必要数</span><span class="v mono">${p.need}</span></div>
+        <div><span class="k">在庫数</span><span class="v">${stockCellHTML(p)}</span></div>
+        <div><span class="k">単価</span><span class="v mono">${yen(p.price)}</span></div>
+        <div><span class="k">入荷予定</span><span class="v mono">${esc(p.eta || '—')}</span></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:2px">
+        <button class="btn btn-secondary btn-sm" style="flex:1" data-edit>編集</button>
+        <button class="btn btn-secondary btn-sm" data-del>削除</button>
+      </div>
+    </div>
+  `);
+  card.querySelector('[data-edit]').onclick = () => openPartForm(p);
+  card.querySelector('[data-del]').onclick = () => confirmDeletePart(p);
+  return card;
+}
+
+async function confirmDeletePart(p) {
+  if (!confirm(`「${p.name}」を削除します。よろしいですか？`)) return;
+  try {
+    await deletePart(p.id);
+    toast('部品を削除しました');
+  } catch (err) { toast('削除に失敗しました：' + (err.message || err), 'err'); }
+}
+
+// ---- 発注登録 / 編集フォーム ----
+function openPartForm(existing) {
+  const isEdit = !!existing;
+  const d = existing ? decoratePart(existing) : {
+    kind: '部品', name: '', model: '', caseId: '', need: 1, stock: 0,
+    supplier: '', price: 0, eta: '', status: '未発注',
+  };
+
+  // 使用案件の候補（既存案件の管理No + 共通）
+  const caseIds = [...new Set(state.casesRaw.map((c) => c.mgmtNo).filter(Boolean))];
+
+  const modal = h(`
+    <div class="modal-backdrop">
+      <div class="modal blueprint">
+        ${CORNERS}
+        <div class="modal-head">
+          <h3>${isEdit ? '部品を編集' : '発注登録'}</h3>
+          <button class="x" title="閉じる">✕</button>
+        </div>
+        <form class="modal-body" id="pform">
+          <div class="form-grid">
+            <div class="field">
+              <label>区分</label>
+              <select class="select" name="kind">
+                ${PART_KINDS.map((k) => `<option ${k === d.kind ? 'selected' : ''}>${esc(k)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field">
+              <label>発注状況</label>
+              <select class="select" name="status">
+                ${PART_STATUSES.map((s) => `<option ${s === d.status ? 'selected' : ''}>${esc(s)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field full">
+              <label>品名 <span style="color:var(--color-accent)">*</span></label>
+              <input class="input" name="name" value="${esc(d.name)}" required placeholder="消防ポンプ A-2級">
+            </div>
+            <div class="field">
+              <label>型番</label>
+              <input class="input" name="model" value="${esc(d.model)}" placeholder="TFP-A2/2026">
+            </div>
+            <div class="field">
+              <label>使用案件</label>
+              <input class="input" name="caseId" value="${esc(d.caseId)}" list="case-ids" placeholder="FE-2481 / 共通">
+              <datalist id="case-ids">${caseIds.map((id) => `<option value="${esc(id)}">`).join('')}<option value="共通"></datalist>
+            </div>
+            <div class="field">
+              <label>必要数</label>
+              <input class="input" type="number" name="need" min="0" step="1" value="${d.need}">
+            </div>
+            <div class="field">
+              <label>在庫数</label>
+              <input class="input" type="number" name="stock" min="0" step="1" value="${d.stock}">
+            </div>
+            <div class="field">
+              <label>仕入先</label>
+              <input class="input" name="supplier" value="${esc(d.supplier)}" placeholder="トーハツ">
+            </div>
+            <div class="field">
+              <label>単価</label>
+              <input class="input" type="number" name="price" min="0" step="1" value="${d.price}">
+            </div>
+            <div class="field">
+              <label>入荷予定</label>
+              <input class="input" name="eta" value="${esc(d.eta)}" placeholder="08/01 または 在庫">
+            </div>
+          </div>
+        </form>
+        <div class="modal-foot">
+          <button class="btn btn-secondary" id="p-cancel">キャンセル</button>
+          <button class="btn btn-primary" id="p-save">${isEdit ? '保存' : '登録'}</button>
+        </div>
+      </div>
+    </div>
+  `);
+
+  const close = () => modal.remove();
+  const form = modal.querySelector('#pform');
+  modal.querySelector('.x').onclick = close;
+  modal.querySelector('#p-cancel').onclick = close;
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+  modal.querySelector('#p-save').onclick = async () => {
+    if (!form.reportValidity()) return;
+    const data = {
+      kind: form.kind.value,
+      name: form.name.value,
+      model: form.model.value,
+      caseId: form.caseId.value,
+      need: Number(form.need.value),
+      stock: Number(form.stock.value),
+      supplier: form.supplier.value,
+      price: Number(form.price.value),
+      eta: form.eta.value,
+      status: form.status.value,
+    };
+    const saveBtn = modal.querySelector('#p-save');
+    saveBtn.disabled = true; saveBtn.textContent = '保存中…';
+    try {
+      if (isEdit) { await updatePart(existing.id, data); toast('部品を保存しました'); }
+      else { await createPart(data); toast('部品を登録しました'); }
+      close();
+    } catch (err) {
+      toast(err.message || '保存に失敗しました', 'err');
+      saveBtn.disabled = false; saveBtn.textContent = isEdit ? '保存' : '登録';
+    }
+  };
+
+  document.body.appendChild(modal);
+  form.querySelector('input:not([disabled])')?.focus();
 }
 
 // ============================================================

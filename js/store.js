@@ -9,10 +9,11 @@ import {
   getDocs, getDoc, onSnapshot, query, orderBy, serverTimestamp, writeBatch,
   storageRef, uploadBytes, getDownloadURL, deleteObject,
 } from './firebase.js';
-import { STAGES } from './util.js';
+import { STAGES, PART_KINDS, PART_STATUSES } from './util.js';
 import { resizeImage } from './image.js';
 
 const CASES = 'cases';
+const PARTS = 'parts';
 
 // ---- 案件 CRUD ---------------------------------------------
 
@@ -185,6 +186,88 @@ export async function removePhoto(caseId, photo) {
     catch (err) { console.warn('Storageの写真削除に失敗（メタは削除済み）:', err); }
   }
 }
+
+// ---- 部品・資材 CRUD（段階3・topレベル parts コレクション） --
+// parts ドキュメント：{ kind, name, model, caseId, need, stock, supplier, price, eta, status, createdAt, updatedAt }
+
+export function subscribeParts(cb, onError) {
+  let unsub = () => {};
+  ready.then(() => {
+    const q = query(collection(db, PARTS), orderBy('createdAt', 'asc'));
+    unsub = onSnapshot(q, (snap) => {
+      cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }, (err) => {
+      console.error('部品購読エラー:', err);
+      onError && onError(err);
+    });
+  }).catch((err) => onError && onError(err));
+  return () => unsub();
+}
+
+export async function createPart(data) {
+  await ready;
+  const created = await addDoc(collection(db, PARTS), {
+    ...normalizePart(data),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return created.id;
+}
+
+export async function updatePart(id, data) {
+  await ready;
+  await updateDoc(doc(db, PARTS, id), { ...normalizePart(data), updatedAt: serverTimestamp() });
+}
+
+export async function deletePart(id) {
+  await ready;
+  await deleteDoc(doc(db, PARTS, id));
+}
+
+// 入力値を正規化（型を揃える）
+function normalizePart(d) {
+  return {
+    kind: PART_KINDS.includes(d.kind) ? d.kind : '部品',
+    name: (d.name ?? '').trim(),
+    model: (d.model ?? '').trim(),
+    caseId: (d.caseId ?? '').trim(),
+    need: clampInt(d.need, 0, 1000000),
+    stock: clampInt(d.stock, 0, 1000000),
+    supplier: (d.supplier ?? '').trim(),
+    price: toNum(d.price),
+    eta: (d.eta ?? '').trim(),
+    status: PART_STATUSES.includes(d.status) ? d.status : '未発注',
+  };
+}
+
+// 初回のみサンプル部品を投入
+export async function seedPartsIfEmpty() {
+  await ready;
+  const snap = await getDocs(collection(db, PARTS));
+  if (!snap.empty) return false;
+
+  const batch = writeBatch(db);
+  SEED_PARTS.forEach((p) => {
+    batch.set(doc(collection(db, PARTS)), {
+      ...normalizePart(p),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  });
+  await batch.commit();
+  return true;
+}
+
+const SEED_PARTS = [
+  { kind: '部品', name: '消防ポンプ A-2級', model: 'TFP-A2/2026', caseId: 'FE-2479', need: 1, stock: 0, supplier: 'トーハツ', price: 680000, eta: '08/01', status: '入荷待ち' },
+  { kind: '部品', name: '真空ポンプユニット', model: 'VP-140', caseId: 'FE-2481', need: 1, stock: 2, supplier: '共立', price: 92000, eta: '在庫', status: '入荷済' },
+  { kind: '資材', name: 'アルミ縞板 t3.0', model: 'A5052 1×2m', caseId: 'FE-2481', need: 6, stock: 3, supplier: '中央鋼材', price: 18500, eta: '07/29', status: '発注済' },
+  { kind: '部品', name: '散水ノズル 65A', model: 'ST-65', caseId: 'FE-2475', need: 4, stock: 4, supplier: '横井製作所', price: 24000, eta: '在庫', status: '入荷済' },
+  { kind: '資材', name: '消防用ホース 65mm×20m', model: 'FH-6520', caseId: 'FE-2470', need: 8, stock: 2, supplier: '芦森工業', price: 15800, eta: '08/05', status: '未発注' },
+  { kind: '部品', name: 'LED警光灯 バー型', model: 'PLB-1200', caseId: 'FE-2465', need: 1, stock: 1, supplier: '大阪サイレン', price: 148000, eta: '在庫', status: '入荷済' },
+  { kind: '部品', name: 'サイレンアンプ', model: 'SA-60', caseId: 'FE-2468', need: 1, stock: 0, supplier: '大阪サイレン', price: 56000, eta: '08/12', status: '発注済' },
+  { kind: '資材', name: 'ステンレスボルトセット', model: 'SUS304 M8', caseId: '共通', need: 200, stock: 640, supplier: '中央鋼材', price: 42, eta: '在庫', status: '入荷済' },
+];
 
 // ---- シード（初回のみ・サンプル7件を投入） ----------------
 
