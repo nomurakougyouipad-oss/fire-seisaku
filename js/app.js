@@ -11,8 +11,8 @@ import {
   stepperHTML, todayLabel, dueShort, clamp,
 } from './util.js';
 import {
-  subscribeCases, subscribeCase, subscribePhotos,
-  createCase, updateCase, patchCase, deleteCase, seedIfEmpty, getCase,
+  subscribeCases, subscribeCase, patchCase, subscribePhotos,
+  createCase, updateCase, deleteCase, seedIfEmpty, backfillOrderDates, getCase,
   uploadStagePhoto, updatePhoto, removePhoto,
   subscribeParts, createPart, updatePart, deletePart, seedPartsIfEmpty,
   subscribeInspections, addInspection, updateInspection, deleteInspection, seedInspectionsIfEmpty,
@@ -78,6 +78,8 @@ async function boot() {
     await ready;
     const seeded = await seedIfEmpty();
     if (seeded) toast('サンプル案件を登録しました');
+    // 既存案件に受注日が無ければ仮の受注日を補完（初回のみ効く）
+    if (!seeded) { try { await backfillOrderDates(); } catch (_) {} }
   } catch (err) {
     state.authError = true;
     renderRoute();
@@ -265,6 +267,7 @@ function renderOrders(view) {
             <th style="width:120px;text-align:right">受注金額</th>
             <th style="width:110px;text-align:right">材料原価</th>
             <th style="width:110px;text-align:right">工数原価</th>
+            <th style="width:96px">受注日</th>
             <th style="width:110px">納期</th>
             <th style="width:64px">担当</th>
             <th style="width:80px">状態</th>
@@ -301,7 +304,7 @@ function fillOrderRows(rows) {
   if (!tbody || !cards) return;
 
   if (rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="10"><div class="empty">該当する案件がありません</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11"><div class="empty">該当する案件がありません</div></td></tr>`;
     cards.innerHTML = `<div class="empty">該当する案件がありません</div>`;
     return;
   }
@@ -341,6 +344,10 @@ function tableRow(c) {
       <td class="mono right" style="font-size:13px">${yen(c.materialCost)}</td>
       <td class="mono right" style="font-size:13px">${yen(c.laborCost)}</td>
       <td>
+        <div class="mono" style="font-size:13px">${c.orderShort}</div>
+        ${c.buildDays != null ? `<div class="text-muted" style="font-size:11px">製作 ${c.buildDays}日</div>` : ''}
+      </td>
+      <td>
         <div class="mono" style="font-size:13px">${c.dueShort}</div>
         ${c.isLate
           ? `<div style="font-size:11px;color:var(--color-bg);background:var(--color-accent-900);display:inline-block;padding:1px 6px;margin-top:2px">${c.dueLabel}</div>`
@@ -369,12 +376,14 @@ function mobileCard(c) {
         <span class="mono" style="font-size:14px;color:var(--color-accent-800)">${pct(c.progress)}</span>
       </div>
       <div style="height:1px;background:var(--color-divider)"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;gap:8px">
+        <span><span class="text-muted" style="font-size:10px;letter-spacing:.06em">受注 </span><span class="mono">${c.orderShort}</span></span>
         <span><span class="text-muted" style="font-size:10px;letter-spacing:.06em">納期 </span><span class="mono">${c.dueShort}</span></span>
         ${c.isLate
           ? `<span style="font-size:11px;color:var(--color-bg);background:var(--color-accent-900);padding:2px 7px">${c.dueLabel}</span>`
           : `<span class="text-muted">${c.dueLabel}</span>`}
       </div>
+      ${c.buildDays != null ? `<div class="text-muted" style="font-size:11px">製作期間 ${c.buildDays}日（受注→納期）</div>` : ''}
     </div>
   `);
   card.addEventListener('click', () => go('#/case/' + encodeURIComponent(c.id)));
@@ -694,6 +703,7 @@ function detailDesktop(c) {
             <span class="mono" style="font-size:13px">${c.dueShort}（${c.dueLabel}）</span>
           </div>
           <div class="progressbar" style="margin-top:6px;--bar:${c.barColor}"><span style="width:${clamp(c.progress,0,100)}%"></span></div>
+          <div class="text-muted mono" style="font-size:12px;margin-top:7px;text-align:right">受注 ${c.orderShort} → 納期 ${c.dueShort}${c.buildDays != null ? `　製作期間 ${c.buildDays}日` : ''}</div>
           <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap">
             <a class="btn btn-secondary btn-sm" href="#/docs/${encodeURIComponent(c.id)}">📐 図面・仕様書</a>
             <button class="btn btn-secondary btn-sm" id="d-edit">✎ 編集</button>
@@ -770,7 +780,7 @@ function detailMobile(c) {
   const wrap = h(`
     <div class="detail-mobile">
       <div class="m-detail-head">
-        <div class="text-muted" style="font-size:12px">シャシ ${esc(c.chassis)} ・ 納期 ${c.dueShort}（${c.dueLabel}）</div>
+        <div class="text-muted" style="font-size:12px">シャシ ${esc(c.chassis)} ・ 受注 ${c.orderShort} → 納期 ${c.dueShort}（${c.dueLabel}）${c.buildDays != null ? ' ・ 製作 ' + c.buildDays + '日' : ''}</div>
         <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
           <div class="progressbar" style="flex:1;--bar:${c.barColor}"><span style="width:${clamp(c.progress,0,100)}%"></span></div>
           <span class="mono" style="font-size:13px;color:var(--color-accent-800)">${pct(c.progress)}</span>
@@ -1150,6 +1160,10 @@ function openCaseForm(existing) {
               </div>
             </div>
             <div class="field">
+              <label>受注日</label>
+              <input class="input" type="date" name="orderDate" value="${esc(d.orderDate || '')}">
+            </div>
+            <div class="field">
               <label>納期</label>
               <input class="input" type="date" name="due" value="${esc(d.due)}">
             </div>
@@ -1195,6 +1209,7 @@ function openCaseForm(existing) {
       staff: form.staff.value,
       stageIndex: Number(form.stageIndex.value),
       progress: Number(form.progress.value),
+      orderDate: form.orderDate.value,
       due: form.due.value,
       status: form.status.value,
       orderAmount: Number(form.orderAmount.value),

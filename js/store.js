@@ -103,6 +103,7 @@ function normalizeCase(d) {
     chassis: (d.chassis ?? '').trim(),
     stageIndex: clampInt(d.stageIndex, 0, STAGES.length - 1),
     progress: clampInt(d.progress, 0, 100),
+    orderDate: d.orderDate || '',
     due: d.due || '',
     staff: (d.staff ?? '').trim(),
     status: ['順調', '要注意', '遅延'].includes(d.status) ? d.status : '順調',
@@ -442,13 +443,41 @@ export async function seedIfEmpty() {
   return true;
 }
 
-// プロトタイプのサンプルデータ（納期は2026年の絶対日付に変換）
+// プロトタイプのサンプルデータ（受注日・納期は2026年の絶対日付）
 const SEED_CASES = [
-  { mgmtNo: 'FE-2481', customer: '相模原市消防団', type: 'CD-I型 ポンプ自動車', chassis: 'いすゞ ELF', stageIndex: 2, progress: 44, due: '2026-09-30', staff: '田中', status: '順調', orderAmount: 3200000, materialCost: 1850000, laborCost: 620000 },
-  { mgmtNo: 'FE-2479', customer: '厚木市消防本部', type: '水槽付ポンプ自動車', chassis: '日野 レンジャー', stageIndex: 3, progress: 61, due: '2026-08-22', staff: '佐藤', status: '順調', orderAmount: 4380000, materialCost: 2400000, laborCost: 980000 },
-  { mgmtNo: 'FE-2475', customer: '海老名市消防団', type: '小型動力ポンプ付積載車', chassis: 'トヨタ ダイナ', stageIndex: 4, progress: 78, due: '2026-08-05', staff: '鈴木', status: '要注意', orderAmount: 2080000, materialCost: 1120000, laborCost: 540000 },
-  { mgmtNo: 'FE-2470', customer: '座間市消防本部', type: '資機材搬送車', chassis: 'いすゞ フォワード', stageIndex: 5, progress: 92, due: '2026-07-31', staff: '高橋', status: '順調', orderAmount: 3450000, materialCost: 1680000, laborCost: 1240000 },
-  { mgmtNo: 'FE-2468', customer: '大和市消防団', type: 'CD-II型 ポンプ自動車', chassis: '三菱ふそう キャンター', stageIndex: 1, progress: 22, due: '2026-10-20', staff: '田中', status: '順調', orderAmount: 2960000, materialCost: 2050000, laborCost: 410000 },
-  { mgmtNo: 'FE-2465', customer: '綾瀬市消防本部', type: '救助工作車', chassis: '日野 レンジャー', stageIndex: 0, progress: 8, due: '2026-11-15', staff: '伊藤', status: '順調', orderAmount: 4650000, materialCost: 3200000, laborCost: 260000 },
-  { mgmtNo: 'FE-2460', customer: '秦野市消防団', type: '水槽付ポンプ自動車', chassis: 'いすゞ フォワード', stageIndex: 4, progress: 70, due: '2026-07-25', staff: '佐藤', status: '遅延', orderAmount: 3980000, materialCost: 2380000, laborCost: 1050000 },
+  { mgmtNo: 'FE-2481', customer: '相模原市消防団', type: 'CD-I型 ポンプ自動車', chassis: 'いすゞ ELF', stageIndex: 2, progress: 44, orderDate: '2026-05-18', due: '2026-09-30', staff: '田中', status: '順調', orderAmount: 3200000, materialCost: 1850000, laborCost: 620000 },
+  { mgmtNo: 'FE-2479', customer: '厚木市消防本部', type: '水槽付ポンプ自動車', chassis: '日野 レンジャー', stageIndex: 3, progress: 61, orderDate: '2026-04-10', due: '2026-08-22', staff: '佐藤', status: '順調', orderAmount: 4380000, materialCost: 2400000, laborCost: 980000 },
+  { mgmtNo: 'FE-2475', customer: '海老名市消防団', type: '小型動力ポンプ付積載車', chassis: 'トヨタ ダイナ', stageIndex: 4, progress: 78, orderDate: '2026-04-22', due: '2026-08-05', staff: '鈴木', status: '要注意', orderAmount: 2080000, materialCost: 1120000, laborCost: 540000 },
+  { mgmtNo: 'FE-2470', customer: '座間市消防本部', type: '資機材搬送車', chassis: 'いすゞ フォワード', stageIndex: 5, progress: 92, orderDate: '2026-03-30', due: '2026-07-31', staff: '高橋', status: '順調', orderAmount: 3450000, materialCost: 1680000, laborCost: 1240000 },
+  { mgmtNo: 'FE-2468', customer: '大和市消防団', type: 'CD-II型 ポンプ自動車', chassis: '三菱ふそう キャンター', stageIndex: 1, progress: 22, orderDate: '2026-06-15', due: '2026-10-20', staff: '田中', status: '順調', orderAmount: 2960000, materialCost: 2050000, laborCost: 410000 },
+  { mgmtNo: 'FE-2465', customer: '綾瀬市消防本部', type: '救助工作車', chassis: '日野 レンジャー', stageIndex: 0, progress: 8, orderDate: '2026-07-01', due: '2026-11-15', staff: '伊藤', status: '順調', orderAmount: 4650000, materialCost: 3200000, laborCost: 260000 },
+  { mgmtNo: 'FE-2460', customer: '秦野市消防団', type: '水槽付ポンプ自動車', chassis: 'いすゞ フォワード', stageIndex: 4, progress: 70, orderDate: '2026-03-10', due: '2026-07-25', staff: '佐藤', status: '遅延', orderAmount: 3980000, materialCost: 2380000, laborCost: 1050000 },
 ];
+
+// 既存の案件で受注日が未設定のものに、仮の受注日を後付けで補完（初回のみ）。
+// 仮値は「納期の120日前」。既存サンプルにも受注日が入るようにする。
+export async function backfillOrderDates() {
+  await ready;
+  const snap = await getDocs(collection(db, CASES));
+  const missing = snap.docs.filter((d) => !d.data().orderDate);
+  if (!missing.length) return 0;
+
+  const batch = writeBatch(db);
+  missing.forEach((d) => {
+    const data = d.data();
+    const od = data.due ? isoMinusDays(data.due, 120) : '';
+    batch.update(d.ref, { orderDate: od, updatedAt: serverTimestamp() });
+  });
+  await batch.commit();
+  return missing.length;
+}
+
+function isoMinusDays(iso, days) {
+  const base = new Date(iso + 'T00:00:00');
+  if (isNaN(base)) return '';
+  base.setDate(base.getDate() - days);
+  const y = base.getFullYear();
+  const m = String(base.getMonth() + 1).padStart(2, '0');
+  const dd = String(base.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}

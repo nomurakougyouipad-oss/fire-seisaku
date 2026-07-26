@@ -153,6 +153,15 @@ export function dueShort(dueISO) {
   return mm + '/' + dd;
 }
 
+// 2つの日付(YYYY-MM-DD)の日数差（fromISO → toISO）。どちらか無ければ null
+export function daysBetween(fromISO, toISO) {
+  if (!fromISO || !toISO) return null;
+  const a = new Date(fromISO + 'T00:00:00');
+  const b = new Date(toISO + 'T00:00:00');
+  if (isNaN(a) || isNaN(b)) return null;
+  return Math.round((b - a) / 86400000);
+}
+
 // 今日の日付（YYYY/MM/DD）
 export function todayLabel(base = new Date()) {
   const y = base.getFullYear();
@@ -191,6 +200,9 @@ export function decorateCase(c, baseDate = new Date()) {
     dueDays: dueDaysFrom(c.due, baseDate),
     dueLabel: dueLabel(c.due, baseDate),
     dueShort: dueShort(c.due),
+    orderDate: c.orderDate || '',
+    orderShort: dueShort(c.orderDate),
+    buildDays: daysBetween(c.orderDate, c.due),   // 受注日→納期 の製作期間（日数）
     isLate: status === '遅延',
     isWarn: status === '要注意',
     isOk: status === '順調',
