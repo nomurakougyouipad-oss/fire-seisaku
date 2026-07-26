@@ -597,8 +597,11 @@ textarea.input { resize: vertical; line-height: 1.5; min-height: 54px; }
   position: fixed; inset: 0; z-index: 80;
   background: rgba(12, 13, 14, 0.55);
   display: flex; align-items: center; justify-content: center;
-  padding: 20px;
-  overflow: auto;
+  /* iPhoneのセーフエリア(上の時計帯・下のホームバー)を避ける。
+     position:fixed の inset:0 を基準にするため 100vh は使わない（iOSで不正確）。 */
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+           max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  overflow: hidden;
 }
 .modal {
   background: var(--color-bg);
@@ -606,17 +609,29 @@ textarea.input { resize: vertical; line-height: 1.5; min-height: 54px; }
   max-width: 560px;
   box-shadow: var(--shadow-lg);
   display: flex; flex-direction: column;
-  max-height: calc(100vh - 40px);
+  /* セーフエリアを除いたバックドロップ内に必ず収める。はみ出す分は本文をスクロール */
+  max-height: 100%;
+  min-height: 0;
 }
 .modal-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px 20px;
   background: var(--fire-grad); color: #fff;
+  flex-shrink: 0;               /* タイトルは常に表示（縮まない） */
 }
 .modal-head h3 { color: #fff; }
 .modal-head .x { background: none; border: none; color: #fff; font-size: 22px; cursor: pointer; line-height: 1; }
-.modal-body { padding: 20px; overflow: auto; display: flex; flex-direction: column; gap: 16px; }
-.modal-foot { padding: 14px 20px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid var(--color-divider); }
+/* 入力項目の部分だけスクロールする */
+.modal-body {
+  padding: 20px; display: flex; flex-direction: column; gap: 16px;
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.modal-foot {
+  padding: 14px 20px; display: flex; gap: 10px; justify-content: flex-end;
+  border-top: 1px solid var(--color-divider);
+  flex-shrink: 0;               /* 保存・キャンセルは常に表示（縮まない） */
+}
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .form-grid .full { grid-column: 1 / -1; }
 
