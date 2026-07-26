@@ -89,8 +89,31 @@ export async function patchCase(id, partial) {
   await updateDoc(doc(db, CASES, id), { ...partial, updatedAt: serverTimestamp() });
 }
 
+// 案件を削除。関連する工程写真・図面・検査（サブコレクション）と
+// Storage 上の実体（写真・図面ファイル）もまとめて削除する。
 export async function deleteCase(id) {
   await ready;
+
+  const [photoSnap, docSnap, inspSnap] = await Promise.all([
+    getDocs(collection(db, CASES, id, 'photos')),
+    getDocs(collection(db, CASES, id, 'documents')),
+    getDocs(collection(db, CASES, id, 'inspections')),
+  ]);
+
+  // Storage 実体（path を持つ写真・図面）を削除
+  const paths = [];
+  photoSnap.forEach((d) => { const p = d.data().path; if (p) paths.push(p); });
+  docSnap.forEach((d) => { const p = d.data().path; if (p) paths.push(p); });
+  await Promise.all(paths.map((p) => deleteObject(storageRef(storage, p)).catch(() => {})));
+
+  // Firestore のサブコレクションを削除（件数に依存しないよう個別削除）
+  const dels = [];
+  photoSnap.forEach((d) => dels.push(deleteDoc(d.ref)));
+  docSnap.forEach((d) => dels.push(deleteDoc(d.ref)));
+  inspSnap.forEach((d) => dels.push(deleteDoc(d.ref)));
+  await Promise.all(dels);
+
+  // 最後に案件本体を削除
   await deleteDoc(doc(db, CASES, id));
 }
 

@@ -179,6 +179,13 @@ a { color: var(--color-accent-800); }
 .btn-secondary:hover { background: var(--color-neutral-100); }
 .btn-ghost { border-color: transparent; background: transparent; }
 .btn-ghost:hover { background: rgba(0, 0, 0, 0.05); }
+/* 危険操作（削除）ボタン：赤枠・赤文字で明示 */
+.btn-danger {
+  background: var(--color-surface);
+  border-color: var(--color-accent-300);
+  color: var(--color-accent-800);
+}
+.btn-danger:hover { background: var(--color-accent-100); border-color: var(--color-accent-600); }
 .btn-block { width: 100%; }
 .btn-icon { width: 44px; min-width: 44px; padding: 0; font-size: 16px; }
 .btn-sm { min-height: 30px; padding: 5px 11px; font-size: 13px; }
@@ -246,10 +253,14 @@ textarea.input { resize: vertical; line-height: 1.5; min-height: 54px; }
 }
 .seg-opt:last-child { border-right: none; }
 .seg-opt input { position: absolute; opacity: 0; pointer-events: none; }
+/* 選択中を明確に強調（アクセント地 + 太字 + 下線）。
+   .on は JS で付与するフォールバック（:has 非対応の古いWebView対策）。 */
+.seg-opt.on,
 .seg-opt:has(input:checked) {
   background: var(--color-accent-100);
   color: var(--color-accent-800);
-  font-weight: 600;
+  font-weight: 700;
+  box-shadow: inset 0 -3px 0 var(--color-accent-600);
 }
 .seg-opt:focus-within { outline: 2px solid var(--color-accent); outline-offset: -2px; }
 

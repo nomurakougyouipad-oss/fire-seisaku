@@ -237,14 +237,14 @@ function renderOrders(view) {
 
       <div class="toolbar">
         <div class="seg pc-only">
-          <label class="seg-opt"><input type="radio" name="view" data-view="list" ${state.ordersView === 'list' ? 'checked' : ''}>一覧</label>
-          <label class="seg-opt"><input type="radio" name="view" data-view="card" ${state.ordersView === 'card' ? 'checked' : ''}>カード</label>
+          <label class="seg-opt${state.ordersView === 'list' ? ' on' : ''}"><input type="radio" name="view" data-view="list" ${state.ordersView === 'list' ? 'checked' : ''}>一覧</label>
+          <label class="seg-opt${state.ordersView === 'card' ? ' on' : ''}"><input type="radio" name="view" data-view="card" ${state.ordersView === 'card' ? 'checked' : ''}>カード</label>
           <label class="seg-opt"><input type="radio" name="view" data-view="board">工程</label>
         </div>
         <input class="input" id="search" style="max-width:260px" placeholder="管理No・顧客で検索" value="${esc(state.search)}">
         <div class="seg m-only">
-          <label class="seg-opt"><input type="radio" name="msort" ${state.sort === 'due' ? 'checked' : ''} data-sort="due">納期順</label>
-          <label class="seg-opt"><input type="radio" name="msort" ${state.sort === 'progress' ? 'checked' : ''} data-sort="progress">進捗順</label>
+          <label class="seg-opt${state.sort === 'due' ? ' on' : ''}"><input type="radio" name="msort" ${state.sort === 'due' ? 'checked' : ''} data-sort="due">納期順</label>
+          <label class="seg-opt${state.sort === 'progress' ? ' on' : ''}"><input type="radio" name="msort" ${state.sort === 'progress' ? 'checked' : ''} data-sort="progress">進捗順</label>
         </div>
         <button class="btn btn-primary push" id="new-case">＋ 新規案件</button>
       </div>
@@ -290,18 +290,28 @@ function renderOrders(view) {
   }, 180));
   el.querySelector('#new-case').addEventListener('click', () => openCaseForm(null));
   el.querySelectorAll('[data-sort]').forEach((r) => r.addEventListener('change', (e) => {
-    state.sort = e.target.dataset.sort; refreshOrderRows();
+    state.sort = e.target.dataset.sort; markSegActive(e.target); refreshOrderRows();
   }));
   // 表示切替（一覧 / カード / 工程）
   el.querySelectorAll('[data-view]').forEach((r) => r.addEventListener('change', (e) => {
     const v = e.target.dataset.view;
     if (v === 'board') { location.hash = '#/board'; return; }
+    markSegActive(e.target);
     state.ordersView = v;                              // 'list' | 'card'
     el.classList.toggle('view-card', v === 'card');    // CSSで表/カードを切替
   }));
 
   view.replaceChildren(el);
   fillOrderRows(rows);
+}
+
+// セグメント内で選択中の項目に .on を付与（:has 非対応環境向けの明示ハイライト）
+function markSegActive(input) {
+  const group = input.closest('.seg');
+  if (!group) return;
+  group.querySelectorAll('.seg-opt').forEach((o) => o.classList.remove('on'));
+  const opt = input.closest('.seg-opt');
+  if (opt) opt.classList.add('on');
 }
 
 function refreshOrderRows() { fillOrderRows(getVisibleCases()); }
@@ -715,7 +725,7 @@ function detailDesktop(c) {
           <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap">
             <a class="btn btn-secondary btn-sm" href="#/docs/${encodeURIComponent(c.id)}">📐 図面・仕様書</a>
             <button class="btn btn-secondary btn-sm" id="d-edit">✎ 編集</button>
-            <button class="btn btn-secondary btn-sm" id="d-del">削除</button>
+            <button class="btn btn-danger btn-sm" id="d-del">🗑 削除</button>
             <button class="btn btn-primary btn-sm" id="d-advance" ${c.stageIndex >= STAGES.length - 1 ? 'disabled' : ''}>次の工程へ進める →</button>
           </div>
         </div>
@@ -808,11 +818,11 @@ function detailMobile(c) {
         </div>
         <div id="m-photos" style="display:flex;flex-direction:column;gap:13px"></div>
         <button class="btn btn-secondary btn-block" style="height:50px" id="m-addphoto">＋ 写真を追加</button>
+        <button class="btn btn-danger btn-block" style="height:46px;margin-top:18px" id="m-del3">🗑 この案件を削除</button>
       </div>
 
       <div class="bottombar">
         <button class="btn btn-secondary btn-icon" id="m-edit2" title="編集">✎</button>
-        <button class="btn btn-secondary btn-icon" id="m-del2" title="削除">🗑</button>
         <button class="btn btn-primary" style="flex:1;height:44px" id="m-advance" ${c.stageIndex >= STAGES.length - 1 ? 'disabled' : ''}>次の工程へ進める →</button>
       </div>
     </div>
@@ -836,7 +846,7 @@ function detailMobile(c) {
 
   wrap.querySelector('#m-addphoto').onclick = () => pickAndUploadPhotos(c.id, sel);
   wrap.querySelector('#m-edit2').onclick = () => openCaseForm(c);
-  wrap.querySelector('#m-del2').onclick = () => confirmDelete(c);
+  wrap.querySelector('#m-del3').onclick = () => confirmDelete(c);
   const adv = wrap.querySelector('#m-advance');
   if (adv) adv.onclick = () => advanceStage(c);
   return wrap;
@@ -1100,12 +1110,13 @@ async function advanceStage(c) {
 }
 
 async function confirmDelete(c) {
-  if (!confirm(`案件「${c.mgmtNo} ${c.type}」を削除します。よろしいですか？`)) return;
+  if (!confirm(`案件「${c.mgmtNo} ${c.type}」を削除します。\n関連する工程写真・図面・検査記録もすべて削除されます。\n本当に削除しますか？（元に戻せません）`)) return;
   try {
+    toast('削除中…');
     await deleteCase(c.id);
-    toast('案件を削除しました');
+    toast('案件と関連データを削除しました');
     go('#/');
-  } catch (err) { toast('削除に失敗しました：' + err.message, 'err'); }
+  } catch (err) { toast('削除に失敗しました：' + (err.message || err), 'err'); }
 }
 
 // ============================================================
