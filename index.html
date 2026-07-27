@@ -7,7 +7,7 @@
   <meta name="description" content="消防車両の製作工程・進捗・写真記録を管理する業務アプリ">
 
   <!-- テーマ / PWA -->
-  <meta name="theme-color" content="#7c1e18">
+  <meta name="theme-color" content="#f4f1ee">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -28,8 +28,76 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="app.css">
+
+  <!-- スタート画面（スプラッシュ）: app.css の遅延に依存せず即座に正しく描画するためインライン -->
+  <style>
+    #splash {
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; align-items: center; justify-content: center;
+      background: #f4f1ee;
+      padding:
+        max(24px, env(safe-area-inset-top))
+        max(24px, env(safe-area-inset-right))
+        max(24px, env(safe-area-inset-bottom))
+        max(24px, env(safe-area-inset-left));
+      opacity: 1; transition: opacity .5s ease;
+    }
+    #splash.hide { opacity: 0; pointer-events: none; }
+    .splash-inner {
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+      animation: splash-pop .6s ease both;
+    }
+    .splash-logo { width: min(56vw, 240px); height: auto; display: block; user-select: none; -webkit-user-drag: none; }
+    .splash-cap { margin-top: 18px; }
+    .splash-title {
+      font: 600 16px/1.4 "Noto Sans JP", system-ui, sans-serif;
+      color: #7c1e18; letter-spacing: .02em;
+    }
+    .splash-sub {
+      margin-top: 4px;
+      font: 500 12px/1.5 "Noto Sans JP", system-ui, sans-serif;
+      color: #8a827a; letter-spacing: .08em;
+    }
+    @keyframes splash-pop {
+      from { opacity: 0; transform: translateY(8px) scale(.98); }
+      to   { opacity: 1; transform: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .splash-inner { animation: none; }
+      #splash { transition: none; }
+    }
+  </style>
 </head>
 <body>
+  <!-- スタート画面（スプラッシュ）: 起動直後に表示し、約2秒でフェードして案件一覧へ -->
+  <div id="splash" role="status" aria-label="起動中">
+    <div class="splash-inner">
+      <img class="splash-logo" src="icons/icon_master_1024.png" width="1024" height="1024"
+           alt="FIRE ENGINE" fetchpriority="high" decoding="async">
+      <div class="splash-cap">
+        <div class="splash-title">消防車両 製作管理</div>
+        <div class="splash-sub">よつば建設工業</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    // スプラッシュ制御: 起動から約2秒でフェードアウトし、DOMから除去して案件一覧を表示する。
+    // （ボタン操作は不要。prefers-reduced-motion 時は CSS 側でトランジション無効）
+    (function () {
+      var splash = document.getElementById('splash');
+      if (!splash) return;
+      var HOLD = 2000;   // 表示保持時間（約2秒）
+      var FADE = 500;    // フェード時間（CSS の transition と一致）
+      function dismiss() {
+        splash.classList.add('hide');
+        setTimeout(function () {
+          if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
+        }, FADE + 60);
+      }
+      setTimeout(dismiss, HOLD);
+    })();
+  </script>
+
   <script>
     // ページ全体のピンチ／ダブルタップ拡大を無効化する。
     // ボタンや入力のタップで画面が勝手に拡大するのを防ぐ（touch-action と併用）。

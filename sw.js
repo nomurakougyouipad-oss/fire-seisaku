@@ -4,7 +4,7 @@
 // ・Firebase/フォント等のクロスオリジンは常にネットワーク
 // ============================================================
 
-const VERSION = 'v19';
+const VERSION = 'v20';
 const CACHE = 'fire-seisaku-' + VERSION;
 
 // アプリシェル（オフラインでも起動できる最小セット）
@@ -22,6 +22,7 @@ const SHELL = [
   './icons/favicon_32.png',
   './icons/android_192_xxxhdpi.png',
   './icons/ios_180_iphone-3x.png',
+  './icons/icon_master_1024.png',
 ];
 
 self.addEventListener('install', (e) => {
