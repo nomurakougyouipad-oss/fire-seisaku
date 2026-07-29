@@ -96,16 +96,6 @@ function hideSplash() {
   if (typeof window.hideSplash === 'function') window.hideSplash();
 }
 
-// 起動アニメーション設定（'A' = ズーム消滅 / 'B' = ふわっと浮かび上がり）
-// 端末ごとの設定のため localStorage に保存（GitHub Pages は姉妹アプリと同一オリジンのためキーにアプリ名を付ける）
-const SPLASH_ANIM_KEY = 'fireSeisaku:splashAnim';
-function getSplashAnim() {
-  try { return localStorage.getItem(SPLASH_ANIM_KEY) === 'B' ? 'B' : 'A'; } catch (_) { return 'A'; }
-}
-function setSplashAnim(v) {
-  try { localStorage.setItem(SPLASH_ANIM_KEY, v); } catch (_) {}
-}
-
 // ---- ルーティング ------------------------------------------
 function parseHash() {
   const raw = (location.hash || '#/').replace(/^#/, '');
@@ -187,7 +177,7 @@ function renderRoute() {
     case 'parts': renderParts(view); break;
     case 'inspection': renderInspection(view, param); break;
     case 'docs': renderDocs(view, param); break;
-    case 'settings': renderSettings(view); break;
+    case 'settings': renderPlaceholder(view, '設定', '準備中です。', '⚙'); break;
     default: renderOrders(view);
   }
 }
@@ -2199,53 +2189,6 @@ function openDocUploadForm(caseId) {
 // ============================================================
 // 補助ビュー
 // ============================================================
-// ============================================================
-// 設定
-// ============================================================
-function renderSettings(view) {
-  setMobileHeader(`<div><div class="m-title">設定</div></div>`);
-  document.getElementById('fab').style.display = 'none';
-
-  const cur = getSplashAnim();
-  const el = h(`
-    <div class="container">
-      <h2>設定</h2>
-      <div class="blueprint settings-card">
-        ${CORNERS}
-        <div class="settings-row">
-          <div class="settings-info">
-            <div class="settings-name">起動アニメーション</div>
-            <div class="settings-desc">起動画面（スプラッシュ）の動きを選べます。この端末だけに保存され、次回起動から反映されます。</div>
-          </div>
-          <div class="seg" id="splashAnimSeg">
-            <label class="seg-opt ${cur === 'A' ? 'on' : ''}">
-              <input type="radio" name="splashAnim" value="A" ${cur === 'A' ? 'checked' : ''}>案A ズーム消滅
-            </label>
-            <label class="seg-opt ${cur === 'B' ? 'on' : ''}">
-              <input type="radio" name="splashAnim" value="B" ${cur === 'B' ? 'checked' : ''}>案B ふわっと
-            </label>
-          </div>
-        </div>
-        <div class="settings-desc" style="margin-top:10px">
-          案A: ロゴが手前に拡大しながらフェードアウト ／ 案B: ロゴが下からふわっと現れ、ゆっくりフェードアウト
-        </div>
-      </div>
-    </div>
-  `);
-
-  el.querySelectorAll('input[name="splashAnim"]').forEach((input) => {
-    input.addEventListener('change', () => {
-      setSplashAnim(input.value);
-      el.querySelectorAll('#splashAnimSeg .seg-opt').forEach((opt) => {
-        opt.classList.toggle('on', opt.querySelector('input').checked);
-      });
-      toast(`起動アニメーションを「案${input.value}」にしました`);
-    });
-  });
-
-  view.replaceChildren(el);
-}
-
 function renderPlaceholder(view, title, msg, icon) {
   setMobileHeader(`<div><div class="m-title">${esc(title)}</div></div>`);
   document.getElementById('fab').style.display = 'none';

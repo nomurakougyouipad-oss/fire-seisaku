@@ -879,18 +879,6 @@ textarea.input { resize: vertical; line-height: 1.5; min-height: 54px; }
 .placeholder-page { padding: 60px 26px; text-align: center; color: var(--color-text-muted); }
 
 /* ============================================================
-   設定
-   ============================================================ */
-.settings-card { padding: 20px 22px; }
-.settings-row {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; flex-wrap: wrap;
-}
-.settings-info { min-width: 200px; flex: 1; }
-.settings-name { font-family: var(--font-heading); font-weight: 600; font-size: 16px; }
-.settings-desc { font-size: 12px; color: var(--color-text-muted); margin-top: 3px; line-height: 1.6; }
-
-/* ============================================================
    工程ボード（カンバン）
    ============================================================ */
 .board-head { align-items: flex-start; }

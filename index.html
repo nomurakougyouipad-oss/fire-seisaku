@@ -38,7 +38,7 @@
       display: flex; align-items: center; justify-content: center;
       background: #fff;
       opacity: 1;
-      transition: opacity .45s ease-in; /* 案A: 消滅フェード */
+      transition: opacity .45s ease-in; /* 消滅フェード */
     }
     #splash.hide { opacity: 0; pointer-events: none; }
     .splash-logo {
@@ -46,25 +46,13 @@
       user-select: none; -webkit-user-drag: none;
       transform-origin: center center;
       will-change: transform, opacity;
-      transition: transform .45s ease-in; /* 案A: ズーム */
+      transition: transform .45s ease-in; /* ズーム */
     }
-    /* 案A「ズーム消滅」: ロゴが手前に拡大(1→8倍)しながら全体フェードアウト */
+    /* ズーム消滅: ロゴが手前に拡大(1→8倍)しながら全体フェードアウト */
     #splash.hide .splash-logo { transform: scale(8); }
-    /* 案B「ふわっと浮かび上がり」: 下から20px浮かんで登場(0.4s) → 読み込み完了後ゆっくりフェード(0.5s) */
-    #splash.anim-b { transition: opacity .5s ease; }
-    #splash.anim-b .splash-logo {
-      transition: none;
-      animation: splash-rise .4s ease-out both;
-    }
-    #splash.anim-b.hide .splash-logo { transform: none; }
-    @keyframes splash-rise {
-      from { opacity: 0; transform: translateY(20px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
     @media (prefers-reduced-motion: reduce) {
       #splash, .splash-logo { transition: opacity .3s ease; }
       #splash.hide .splash-logo { transform: none; }
-      #splash.anim-b .splash-logo { animation: none; }
     }
   </style>
 
@@ -96,16 +84,12 @@
   </div>
   <script>
     // スプラッシュ制御:
-    // ・アニメーションは設定（localStorage）で 案A（ズーム消滅）/ 案B（ふわっと）を切替。初期値は案A。
     // ・読み込みが早くても最低0.8秒は表示（一瞬で消えるチラつき防止）。
     // ・app.js が初回データ到着時に window.hideSplash() を呼ぶ。
     //   万一呼ばれなくても8秒で必ず消える（起動画面のまま固まらない保険）。
     (function () {
       var el = document.getElementById('splash');
       if (!el) return;
-      try {
-        if (localStorage.getItem('fireSeisaku:splashAnim') === 'B') el.classList.add('anim-b');
-      } catch (e) { /* プライベートモード等で localStorage 不可でも案Aで続行 */ }
       var shownAt = Date.now();
       var MIN_MS = 800;   // 最低表示時間
       var hiding = false;
@@ -117,7 +101,7 @@
           el.classList.add('hide');
           setTimeout(function () {
             if (el.parentNode) el.parentNode.removeChild(el);
-          }, 700); // フェード(案A:0.45s/案B:0.5s)完了後にDOMから除去
+          }, 500); // フェード(0.45s)完了後にDOMから除去
         }, rest);
       };
       setTimeout(window.hideSplash, 8000); // 保険
