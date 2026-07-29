@@ -27,60 +27,100 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="app.css">
-
-  <!-- スタート画面（スプラッシュ）: app.css の遅延に依存せず即座に正しく描画するためインライン -->
+  <!-- スタート画面（スプラッシュ）: app.css の遅延に依存せず1フレーム目から正しく描画するためインライン。
+       起動直後の白チラつき対策として html/body の背景も先に白へ固定する
+       （app.css がこの後に読み込まれ、アプリ本来の背景色で上書きされる）。
+       ロゴは PNG（ベージュ背景入り）ではなくインラインSVGで再現し、白背景に馴染ませる。 -->
   <style>
+    html, body { margin: 0; background: #fff; }
     #splash {
       position: fixed; inset: 0; z-index: 9999;
       display: flex; align-items: center; justify-content: center;
-      background: #f4f1ee;
-      padding:
-        max(24px, env(safe-area-inset-top))
-        max(24px, env(safe-area-inset-right))
-        max(24px, env(safe-area-inset-bottom))
-        max(24px, env(safe-area-inset-left));
-      opacity: 1; transition: opacity .5s ease;
+      background: #fff;
+      opacity: 1;
+      transition: opacity .45s ease-in; /* 案A: 消滅フェード */
     }
     #splash.hide { opacity: 0; pointer-events: none; }
-    .splash-inner {
-      display: flex; flex-direction: column; align-items: center; text-align: center;
-      animation: splash-pop .6s ease both;
+    .splash-logo {
+      width: min(28vw, 280px); height: auto; display: block;
+      user-select: none; -webkit-user-drag: none;
+      transform-origin: center center;
+      will-change: transform, opacity;
+      transition: transform .45s ease-in; /* 案A: ズーム */
     }
-    .splash-logo { width: min(76vw, 324px); height: auto; display: block; user-select: none; -webkit-user-drag: none; }
-    @keyframes splash-pop {
-      from { opacity: 0; transform: translateY(8px) scale(.98); }
-      to   { opacity: 1; transform: none; }
+    /* 案A「ズーム消滅」: ロゴが手前に拡大(1→8倍)しながら全体フェードアウト */
+    #splash.hide .splash-logo { transform: scale(8); }
+    /* 案B「ふわっと浮かび上がり」: 下から20px浮かんで登場(0.4s) → 読み込み完了後ゆっくりフェード(0.5s) */
+    #splash.anim-b { transition: opacity .5s ease; }
+    #splash.anim-b .splash-logo {
+      transition: none;
+      animation: splash-rise .4s ease-out both;
+    }
+    #splash.anim-b.hide .splash-logo { transform: none; }
+    @keyframes splash-rise {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
     @media (prefers-reduced-motion: reduce) {
-      .splash-inner { animation: none; }
-      #splash { transition: none; }
+      #splash, .splash-logo { transition: opacity .3s ease; }
+      #splash.hide .splash-logo { transform: none; }
+      #splash.anim-b .splash-logo { animation: none; }
     }
   </style>
+
+  <link rel="stylesheet" href="app.css">
 </head>
 <body>
-  <!-- スタート画面（スプラッシュ）: 起動直後に表示し、約2秒でフェードして案件一覧へ -->
+  <!-- スタート画面（スプラッシュ）: アプリアイコン（FEロゴ）をインラインSVGで再現。
+       初回データ読み込み完了で app.js が window.hideSplash() を呼んでフェードアウトする。
+       ※ アイコンPNGはベージュ背景入りのため白背景には使わず、SVGで描画する -->
   <div id="splash" role="status" aria-label="起動中">
-    <div class="splash-inner">
-      <img class="splash-logo" src="icons/icon_master_1024.png" width="1024" height="1024"
-           alt="FIRE ENGINE" fetchpriority="high" decoding="async">
-    </div>
+    <svg class="splash-logo" viewBox="222 287 580 580" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <g fill="#C8392E">
+        <!-- F -->
+        <rect x="286" y="308" width="80" height="330"/>
+        <rect x="286" y="308" width="214" height="64"/>
+        <rect x="286" y="440" width="180" height="62"/>
+        <!-- E -->
+        <rect x="542" y="308" width="80" height="330"/>
+        <rect x="542" y="308" width="202" height="64"/>
+        <rect x="542" y="438" width="188" height="64"/>
+        <rect x="542" y="574" width="202" height="64"/>
+        <!-- 下線バー -->
+        <rect x="298" y="696" width="430" height="36" rx="18"/>
+      </g>
+      <text x="507" y="845" text-anchor="middle" fill="#A52A21"
+        font-size="70" font-weight="600" letter-spacing="10"
+        font-family="'Barlow','Poppins',system-ui,-apple-system,sans-serif">FIRE ENGINE</text>
+    </svg>
   </div>
   <script>
-    // スプラッシュ制御: 起動から約2秒でフェードアウトし、DOMから除去して案件一覧を表示する。
-    // （ボタン操作は不要。prefers-reduced-motion 時は CSS 側でトランジション無効）
+    // スプラッシュ制御:
+    // ・アニメーションは設定（localStorage）で 案A（ズーム消滅）/ 案B（ふわっと）を切替。初期値は案A。
+    // ・読み込みが早くても最低0.8秒は表示（一瞬で消えるチラつき防止）。
+    // ・app.js が初回データ到着時に window.hideSplash() を呼ぶ。
+    //   万一呼ばれなくても8秒で必ず消える（起動画面のまま固まらない保険）。
     (function () {
-      var splash = document.getElementById('splash');
-      if (!splash) return;
-      var HOLD = 2000;   // 表示保持時間（約2秒）
-      var FADE = 500;    // フェード時間（CSS の transition と一致）
-      function dismiss() {
-        splash.classList.add('hide');
+      var el = document.getElementById('splash');
+      if (!el) return;
+      try {
+        if (localStorage.getItem('fireSeisaku:splashAnim') === 'B') el.classList.add('anim-b');
+      } catch (e) { /* プライベートモード等で localStorage 不可でも案Aで続行 */ }
+      var shownAt = Date.now();
+      var MIN_MS = 800;   // 最低表示時間
+      var hiding = false;
+      window.hideSplash = function () {
+        if (hiding) return;
+        hiding = true;
+        var rest = Math.max(0, MIN_MS - (Date.now() - shownAt));
         setTimeout(function () {
-          if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
-        }, FADE + 60);
-      }
-      setTimeout(dismiss, HOLD);
+          el.classList.add('hide');
+          setTimeout(function () {
+            if (el.parentNode) el.parentNode.removeChild(el);
+          }, 700); // フェード(案A:0.45s/案B:0.5s)完了後にDOMから除去
+        }, rest);
+      };
+      setTimeout(window.hideSplash, 8000); // 保険
     })();
   </script>
 

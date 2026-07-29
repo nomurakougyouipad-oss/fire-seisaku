@@ -8,7 +8,7 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#f4f1ee",
+  "background_color": "#ffffff",
   "theme_color": "#f4f1ee",
   "icons": [
     { "src": "icons/android_48_mdpi.png", "sizes": "48x48", "type": "image/png" },
