@@ -12,9 +12,9 @@ import {
 } from './util.js';
 import {
   subscribeCases, subscribeCase, patchCase, subscribePhotos,
-  createCase, updateCase, deleteCase, seedIfEmpty, backfillOrderDates, getCase,
+  createCase, updateCase, deleteCase, backfillOrderDates, getCase,
   uploadStagePhoto, updatePhoto, removePhoto,
-  subscribeParts, createPart, updatePart, deletePart, seedPartsIfEmpty,
+  subscribeParts, createPart, updatePart, deletePart,
   subscribeInspections, addInspection, updateInspection, deleteInspection, seedInspectionsIfEmpty,
   subscribeDocuments, uploadDocument, updateDocument, removeDocument,
 } from './store.js';
@@ -46,7 +46,6 @@ const state = {
 };
 
 let unsubView = null;      // 現在ビューの購読解除
-let partsSeedTried = false;
 const inspSeedTried = new Set();  // 検査の標準項目を自動投入済みの案件
 
 const IMG_ICON = `<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 15l-5-5L4 21"/></svg>`;
@@ -75,13 +74,10 @@ async function boot() {
 
   renderRoute();
 
-  // 初回のみサンプルデータ投入
+  // 既存案件に受注日が無ければ仮の受注日を補完（初回のみ効く）
   try {
     await ready;
-    const seeded = await seedIfEmpty();
-    if (seeded) toast('サンプル案件を登録しました');
-    // 既存案件に受注日が無ければ仮の受注日を補完（初回のみ効く）
-    if (!seeded) { try { await backfillOrderDates(); } catch (_) {} }
+    await backfillOrderDates();
   } catch (err) {
     state.authError = true;
     renderRoute();
@@ -1298,14 +1294,6 @@ function renderParts(view) {
     (rows) => { state.partsRaw = rows; state.partsLoading = false; paintParts(view); },
     () => { state.authError = true; renderRoute(); }
   );
-
-  // 初回のみサンプル部品を投入
-  if (!partsSeedTried) {
-    partsSeedTried = true;
-    seedPartsIfEmpty()
-      .then((seeded) => { if (seeded) toast('サンプル部品を登録しました'); })
-      .catch(() => {});
-  }
 }
 
 function getVisibleParts(all) {
